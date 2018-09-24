@@ -1,7 +1,2 @@
-Semi working LDAP server for .NET Standard with pluggable backend.  
-No intentions of supporting the whole RFC, just needed features like search and authentication.  
-Ldap packet parser and assembler.  
-  
-This server can be used to support legacy applications that require an LDAP backend. The use cases are for example, authentication (Ldap bind) or user/membership lookup against an arbitrary database.  
-
-[![Build status](https://ci.appveyor.com/api/projects/status/ki6mn3s1f33yjpmx?svg=true)](https://ci.appveyor.com/project/vforteli/flexinetsldap)
+Intended to be a source provider for e-mail softwares to load as address book.
+It's implemented partialy to a point where is only required to changed the "TestSource" to actualy point to a source provider of some sort (like database engine) and correcly change the "HandleSearchRequest" of the server class - my current strugle - Microsoft Outlook only receives up to 8 attributes per entry, no matter what i do ...
