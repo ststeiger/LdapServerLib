@@ -68,17 +68,8 @@ namespace Libs.LDAP
                 return acum.ToArray();
             }
 
-            public static bool Any<T>(global::System.Collections.Generic.IEnumerable<T> enumerator, global::Libs.LDAP.Core.Verify<T> verifier)
-            {
-                foreach (T obj in enumerator) { if (verifier(obj)) { return true; } }
-                return false;
-            }
-
-            public static T SingleOrDefault<T>(global::System.Collections.Generic.IEnumerable<T> enumerator, global::Libs.LDAP.Core.Verify<T> verifier)
-            {
-                foreach (T obj in enumerator) { if (verifier(obj)) { return obj; } }
-                return default(T);
-            }
+            public static bool Any<T>(global::System.Collections.Generic.IEnumerable<T> enumerator, global::Libs.LDAP.Core.Verify<T> verifier) { foreach (T obj in enumerator) { if (verifier(obj)) { return true; } } return false; }
+            public static T SingleOrDefault<T>(global::System.Collections.Generic.IEnumerable<T> enumerator, global::Libs.LDAP.Core.Verify<T> verifier) { foreach (T obj in enumerator) { if (verifier(obj)) { return obj; } } return default(T); }
 
             private sealed class ArraySegmentEnumerator<T> : global::System.Collections.Generic.IEnumerator<T>, global::System.Collections.Generic.IEnumerable<T> //https://referencesource.microsoft.com/#mscorlib/system/arraysegment.cs,9b6becbc5eb6a533
             {
@@ -275,7 +266,7 @@ namespace Libs.LDAP
             UniversalString = 28,
             CharacterString = 29,
             BMPString = 30,
-            NONE = 255 //SAMMUEL
+            NONE = 255 //SAMMUEL (not in protocol - never use it!)
         }
 
         public class Tag
@@ -492,7 +483,7 @@ namespace Libs.LDAP
         global::System.Collections.Generic.IEnumerable<global::Libs.LDAP.IUserData> ListUsers();
     }
 
-    internal class UserData : global::Libs.LDAP.IUserData
+    internal class UserData : global::Libs.LDAP.IUserData //testing purposes only
     {
         public string UserName { get; set; }
         public string FirstName { get; set; }
@@ -515,7 +506,7 @@ namespace Libs.LDAP
         public UserData(string UserName) : this(UserName, (UserName == null ? string.Empty : (UserName.Contains("@") ? UserName : string.Empty)), string.Empty, string.Empty) { /* NOTHING */ }
     }
 
-    internal class Company : global::Libs.LDAP.ICompany
+    internal class Company : global::Libs.LDAP.ICompany //testing purposes only
     {
         public string Name { get; set; }
         public string Phone { get; set; }
@@ -526,7 +517,7 @@ namespace Libs.LDAP
         public string Address { get; set; }
     }
 
-    internal class TestSource : global::Libs.LDAP.IDataSource
+    internal class TestSource : global::Libs.LDAP.IDataSource //testing purposes only
     {
         public global::Libs.LDAP.ICompany Company { get; protected set; }
         public string LDAPRoot { get { return "cn=Users,dc=dev,dc=company,dc=com"; } }
@@ -587,6 +578,7 @@ namespace Libs.LDAP
             }
         }
 
+        //'... Resolve this URGENTLY!
         private global::Libs.LDAP.Core.LdapPacket RespondUserData(global::Libs.LDAP.IUserData user, int MessageID, bool Simple)
         {
             global::Libs.LDAP.Core.LdapAttribute searchResultEntry = new global::Libs.LDAP.Core.LdapAttribute(global::Libs.LDAP.Core.LdapOperation.SearchResultEntry);
@@ -637,12 +629,8 @@ namespace Libs.LDAP
             return response;
         }
 
-        private void WriteAttributes(global::Libs.LDAP.Core.LdapAttribute attr, global::System.Net.Sockets.NetworkStream stream)
-        {
-            byte[] pkB = attr.GetBytes();
-            stream.Write(pkB, 0, pkB.Length);
-        }
-
+        private void WriteAttributes(byte[] pkB, global::System.Net.Sockets.NetworkStream stream) { stream.Write(pkB, 0, pkB.Length); }
+        private void WriteAttributes(global::Libs.LDAP.Core.LdapAttribute attr, global::System.Net.Sockets.NetworkStream stream) { this.WriteAttributes(attr.GetBytes(), stream); }
         private void ReturnAllUsers(global::System.Net.Sockets.NetworkStream stream, int MessageID) { foreach (global::Libs.LDAP.IUserData user in this._validator.ListUsers()) { using (global::Libs.LDAP.Core.LdapPacket pkO = this.RespondUserData(user, MessageID, true)) { this.WriteAttributes(pkO, stream); } } }
 
         private void ReturnSingleUser(global::System.Net.Sockets.NetworkStream stream, int MessageID, string UserName)
@@ -664,6 +652,7 @@ namespace Libs.LDAP
             stream.Write(pkB, 0, pkB.Length);
         }
 
+        //'... make better handling of the filters!
         private void HandleSearchRequest(global::System.Net.Sockets.NetworkStream stream, global::Libs.LDAP.Core.LdapPacket requestPacket, bool IsAdmin)
         {
             global::Libs.LDAP.Core.LdapAttribute searchRequest = global::Libs.LDAP.Core.Utils.SingleOrDefault<global::Libs.LDAP.Core.LdapAttribute>(requestPacket.ChildAttributes, o => { return o.LdapOperation == global::Libs.LDAP.Core.LdapOperation.SearchRequest; });
@@ -703,7 +692,6 @@ namespace Libs.LDAP
                 string username = bindrequest.ChildAttributes[1].GetValue<string>();
                 string password = bindrequest.ChildAttributes[2].GetValue<string>();
                 global::Libs.LDAP.Core.LdapResult response = global::Libs.LDAP.Core.LdapResult.invalidCredentials;
-                //'... was: if (username == "cn=bindUser,cn=Users,dc=dev,dc=company,dc=com" && password == "bindUserPassword" || username == "cn=user,dc=example,dc=com" && password == "123") { response = global::Libs.LDAP.Core.LdapResult.success; }
                 if (this._validator.Validate(username, password, out IsAdmin)) { response = global::Libs.LDAP.Core.LdapResult.success; }
                 global::Libs.LDAP.Core.LdapPacket responsePacket = new global::Libs.LDAP.Core.LdapPacket(requestPacket.MessageId);
                 responsePacket.ChildAttributes.Add(new global::Libs.LDAP.Core.LdapResultAttribute(global::Libs.LDAP.Core.LdapOperation.BindResponse, response));
