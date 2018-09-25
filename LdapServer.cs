@@ -527,14 +527,15 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
     internal class TestSource : LDap.IDataSource //testing purposes only
     {
         public LDap.ICompany Company { get; protected set; }
-        public string LDAPRoot { get { return "cn=Users,dc=dev,dc=company,dc=com"; } }
+        public string LDAPRoot { get { return "cn=Users,dc=company,dc=com"; } }
         public string AdminUser { get { return "admin"; } }
         public string AdminPassword { get { return "12345"; } }
 
         public SysClG.IEnumerable<LDap.IUserData> ListUsers()
         {
-            yield return new LDap.UserData("username1", "add.user1@company.com", "nm1", "sn1") { Department = "Fictional 1", Job = "Director" };
-            yield return new LDap.UserData("username2", "add.user2@company.com", "nm2", "sn2") { Department = "Fictional 2", Job = "Lacky" };
+            yield return new LDap.UserData("ainz.ooal.gown", "ainzsama@nazarick.com", "Ainz", "Ooal Gown") { Department = "Nazarick Mausoleum", Job = "Overlord" };
+            yield return new LDap.UserData("shalltear.bff", "shalltear@nazarick.com", "Shalltear", "Bloodfallen") { Department = "Base Floors", Job = "Guardian" };
+            yield return new LDap.UserData("narberal", "narberal@nazarick.com", "Narberal", "Gamma") { Department = "Floor 10", Job = "Pleiade" };
         }
 
         public bool Validate(string UserName, string Password, out bool IsAdmin)
@@ -552,7 +553,7 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
             }
         }
 
-        public TestSource() { this.Company = new LDap.Company() { Name = "company", Phone = "+5500900000000", Country = "ACountry", State = "STT", City = "CityOfCom", PostCode = "10200300", Address = "An Adress of" }; }
+        public TestSource() { this.Company = new LDap.Company() { Name = "Nazarick Inc.", Phone = "+9900900000000", Country = "Baharuth", State = "E-Rantel", City = "Nazarick", PostCode = "12123123", Address = "An Adress of" }; }
     }
 
     public class Server //https://github.com/vforteli/Flexinets.Ldap.Server/blob/master/LdapServer.cs 
@@ -592,13 +593,14 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
             searchResultEntry.ChildAttributes.Add(new LCore.LdapAttribute(LCore.UniversalDataType.OctetString, ("cn=" + user.UserName + "," + this._validator.LDAPRoot)));
             LCore.LdapAttribute partialAttributeList = new LCore.LdapAttribute(LCore.UniversalDataType.Sequence);
             //outlook request asked for options on the options section of the request (child[7]) as below
-            //'... for some reason, sending more than 8 properties for outlook prevents it from completing the task (on outlook side)
+            //'... for some reason, sending more 1 byte of size (255 bytes) on the total size of the partialAttributesList seems to break on outlook
             this.AddAttribute(partialAttributeList, "cn", user.UserName);
             this.AddAttribute(partialAttributeList, "commonName", user.UserName);
             this.AddAttribute(partialAttributeList, "mail", user.EMail);
-            this.AddAttribute(partialAttributeList, "display-name", user.FullName);
+            //this.AddAttribute(partialAttributeList, "display-name", user.FullName);
             this.AddAttribute(partialAttributeList, "displayname", user.FullName);
             //this.AddAttribute(partialAttributeList, "company", this._validator.Company.Name);
+            //this.AddAttribute(partialAttributeList, "objectClass", LDap.Server.AMAccount, LDap.Server.PosixAccount);
             if (!Simple)
             {
                 //this.AddAttribute(partialAttributeList, "sn", user.LastName);
@@ -606,15 +608,14 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
                 //this.AddAttribute(partialAttributeList, "co", this._validator.Company.Country);
                 //this.AddAttribute(partialAttributeList, "organizationName", this._validator.Company.Name);
                 this.AddAttribute(partialAttributeList, "givenName", user.FirstName);
-                //this.AddAttribute(partialAttributeList, "objectClass", "?");
                 //this.AddAttribute(partialAttributeList, "uid", "?");
-                this.AddAttribute(partialAttributeList, "mailNickname", user.FullName);
+                //this.AddAttribute(partialAttributeList, "mailNickname", user.FullName);
                 //this.AddAttribute(partialAttributeList, "title", user.Job);
                 //this.AddAttribute(partialAttributeList, "telephoneNumber", this._validator.Company.Phone);
                 //if (!string.IsNullOrEmpty(user.FirstName) && !string.IsNullOrEmpty(user.LastName)) { this.AddAttribute(partialAttributeList, "initials", (user.FirstName.Substring(0, 1) + user.LastName.Substring(0, 1))); }
                 //this.AddAttribute(partialAttributeList, "postalAddress", this._validator.Company.Address);
                 //this.AddAttribute(partialAttributeList, "l", this._validator.Company.City);
-                //this.AddAttribute(partialAttributeList, "st", this._validator.Company.State);
+                this.AddAttribute(partialAttributeList, "st", this._validator.Company.State);
                 //this.AddAttribute(partialAttributeList, "postalCode", this._validator.Company.PostCode);
                 //this.AddAttribute(partialAttributeList, "ou", user.Department);
                 //this.AddAttribute(partialAttributeList, "department", user.Department);
@@ -633,7 +634,18 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
 
         private void WriteAttributes(byte[] pkB, SysSock.NetworkStream stream) { stream.Write(pkB, 0, pkB.Length); }
         private void WriteAttributes(LCore.LdapAttribute attr, SysSock.NetworkStream stream) { this.WriteAttributes(attr.GetBytes(), stream); }
-        private void ReturnAllUsers(SysSock.NetworkStream stream, int MessageID) { foreach (LDap.IUserData user in this._validator.ListUsers()) { using (LCore.LdapPacket pkO = this.RespondUserData(user, MessageID, true)) { this.WriteAttributes(pkO, stream); } } }
+
+        private void ReturnAllUsers(SysSock.NetworkStream stream, int MessageID, int Limit)
+        {
+            foreach (LDap.IUserData user in this._validator.ListUsers())
+            {
+                if (Limit > 0)
+                {
+                    using (LCore.LdapPacket pkO = this.RespondUserData(user, MessageID, true)) { this.WriteAttributes(pkO, stream); }
+                    Limit--;
+                } else { break; }
+            }
+        }
 
         private void ReturnSingleUser(SysSock.NetworkStream stream, int MessageID, string UserName)
         {
@@ -654,7 +666,19 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
             stream.Write(pkB, 0, pkB.Length);
         }
 
+        private string ExtractUser(string arg)
+        {
+            if (!string.IsNullOrEmpty(arg))
+            {
+                arg = arg.Trim().Replace(this._validator.LDAPRoot, string.Empty).Trim();
+                if (arg.EndsWith(",")) { arg = arg.Substring(0, (arg.Length - 1)); }
+                if (arg.StartsWith("cn=")) { arg = arg.Substring(3); }
+            }
+            return arg;
+        }
+
         //'... make better handling of the filters!
+        //see this as well: https://tools.ietf.org/html/rfc4511#section-4.5.1
         private void HandleSearchRequest(SysSock.NetworkStream stream, LCore.LdapPacket requestPacket, bool IsAdmin)
         {
             LCore.LdapAttribute searchRequest = LCore.Utils.SingleOrDefault<LCore.LdapAttribute>(requestPacket.ChildAttributes, o => { return o.LdapOperation == LCore.LdapOperation.SearchRequest; });
@@ -662,22 +686,37 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
             if (searchRequest == null) { responsePacket.ChildAttributes.Add(new LCore.LdapResultAttribute(LCore.LdapOperation.SearchResultDone, LCore.LdapResult.compareFalse)); }
             else
             {
-                string arg = searchRequest.ChildAttributes[0].GetValue<string>();
-                if (arg != null && arg.Contains(this._validator.LDAPRoot))
+                try
                 {
+                    int limit = searchRequest.ChildAttributes[3].GetValue<int>();
+                    if (limit == 0) { limit = 999; } //max on outlook | target client
+                    string arg = searchRequest.ChildAttributes[0].GetValue<string>();
                     LCore.LdapAttribute filter = searchRequest.ChildAttributes[6];
                     LCore.LdapFilterChoice filterMode = (LCore.LdapFilterChoice)filter.ContextType;
-                    arg = arg.Trim().Replace(this._validator.LDAPRoot, string.Empty).Trim();
-                    if (arg.EndsWith(",")) { arg = arg.Substring(0, (arg.Length - 1)); }
-                    if (arg.StartsWith("cn=")) { arg = arg.Substring(3); }
-                    switch (filterMode)
+                    if (arg != null && arg.Contains(this._validator.LDAPRoot))
                     {
-                        case LCore.LdapFilterChoice.equalityMatch: this.ReturnSingleUser(stream, requestPacket.MessageId, arg); break;
-                        case LCore.LdapFilterChoice.and:
-                        case LCore.LdapFilterChoice.or: if (string.IsNullOrEmpty(arg) || this.IsValidType(arg)) { this.ReturnAllUsers(stream, requestPacket.MessageId); } else { this.ReturnSingleUser(stream, requestPacket.MessageId, arg); } break;
-                        case LCore.LdapFilterChoice.present: this.ReturnSingleUser(stream, requestPacket.MessageId, arg); break;
+                        arg = this.ExtractUser(arg);
+                        switch (filterMode)
+                        {
+                            case LCore.LdapFilterChoice.equalityMatch: this.ReturnSingleUser(stream, requestPacket.MessageId, arg); break;
+                            case LCore.LdapFilterChoice.and:
+                            case LCore.LdapFilterChoice.or: if (string.IsNullOrEmpty(arg) || this.IsValidType(arg)) { this.ReturnAllUsers(stream, requestPacket.MessageId, limit); } else { this.ReturnSingleUser(stream, requestPacket.MessageId, arg); } break;
+                            case LCore.LdapFilterChoice.present: this.ReturnSingleUser(stream, requestPacket.MessageId, arg); break;
+                        }
                     }
-                }
+                    else
+                    {
+                        arg = filter.GetValue<string>();
+                        if (!string.IsNullOrEmpty(arg))
+                        {
+                            switch (filterMode)
+                            {
+                                case LCore.LdapFilterChoice.present: if (this.IsValidType(arg)) { this.ReturnTrue(stream, requestPacket.MessageId); } break;
+                                default: break; //NOTHING YET!
+                            }
+                        }
+                    }
+                } catch { /* NOTHING */ }
                 responsePacket.ChildAttributes.Add(new LCore.LdapResultAttribute(LCore.LdapOperation.SearchResultDone, LCore.LdapResult.success));
             }
             byte[] responseBytes = responsePacket.GetBytes();
@@ -691,7 +730,7 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
             if (bindrequest == null) { return false; }
             else
             {
-                string username = bindrequest.ChildAttributes[1].GetValue<string>();
+                string username = this.ExtractUser(bindrequest.ChildAttributes[1].GetValue<string>());
                 string password = bindrequest.ChildAttributes[2].GetValue<string>();
                 LCore.LdapResult response = LCore.LdapResult.invalidCredentials;
                 if (this._validator.Validate(username, password, out IsAdmin)) { response = LCore.LdapResult.success; }
