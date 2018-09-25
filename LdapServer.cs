@@ -1,5 +1,12 @@
-//https://docs.iredmail.org/use.openldap.as.address.book.in.outlook.html
-namespace Libs.LDAP
+using Sys = global::System;
+using SysConv = global::System.Convert;
+using SysTxt = global::System.Text;
+using SysCll = global::System.Collections;
+using SysClG = global::System.Collections.Generic;
+using SysSock = global::System.Net.Sockets;
+using LDap = global::Libs.LDAP;
+using LCore = global::Libs.LDAP.Core;
+namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.outlook.html
 {
     namespace Core //https://github.com/vforteli/Flexinets.Ldap.Core
     {
@@ -12,24 +19,24 @@ namespace Libs.LDAP
                 if (trimWhitespace) { hex = hex.Replace(" ", ""); }
                 int NumberChars = hex.Length;
                 byte[] bytes = new byte[NumberChars / 2];
-                for (int i = 0; i < NumberChars; i += 2) { bytes[i / 2] = global::System.Convert.ToByte(hex.Substring(i, 2), 16); }
+                for (int i = 0; i < NumberChars; i += 2) { bytes[i / 2] = SysConv.ToByte(hex.Substring(i, 2), 16); }
                 return bytes;
             }
 
             public static string ByteArrayToString(byte[] bytes)
             {
-                global::System.Text.StringBuilder hex = new global::System.Text.StringBuilder(bytes.Length * 2);
+                SysTxt.StringBuilder hex = new SysTxt.StringBuilder(bytes.Length * 2);
                 foreach (byte b in bytes) { hex.Append(b.ToString("X2")); }
                 return hex.ToString();
             }
 
-            public static string BitsToString(global::System.Collections.BitArray bits)
+            public static string BitsToString(SysCll.BitArray bits)
             {
                 int i = 1;
                 string derp = string.Empty;
                 foreach (object bit in bits)
                 {
-                    derp += global::System.Convert.ToInt32(bit);
+                    derp += SysConv.ToInt32(bit);
                     if (i % 8 == 0) { derp += " "; }
                     i++;
                 }
@@ -41,7 +48,7 @@ namespace Libs.LDAP
                 if (length <= 127) { return new byte[] { (byte)length }; }
                 else
                 {
-                    byte[] intbytes = global::System.BitConverter.GetBytes(length);
+                    byte[] intbytes = Sys.BitConverter.GetBytes(length);
                     byte intbyteslength = (byte)intbytes.Length;
                     while (intbyteslength >= 0)
                     {
@@ -51,14 +58,14 @@ namespace Libs.LDAP
                     int lengthByte = intbyteslength + 128;
                     byte[] berBytes = new byte[1 + intbyteslength];
                     berBytes[0] = (byte)lengthByte;
-                    global::System.Buffer.BlockCopy(intbytes, 0, berBytes, 1, intbyteslength);
+                    Sys.Buffer.BlockCopy(intbytes, 0, berBytes, 1, intbyteslength);
                     return berBytes;
                 }
             }
 
-            public static TObject[] Reverse<TObject>(global::System.Collections.Generic.IEnumerable<TObject> enumerable)
+            public static TObject[] Reverse<TObject>(SysClG.IEnumerable<TObject> enumerable)
             {
-                global::System.Collections.Generic.List<TObject> acum = new global::System.Collections.Generic.List<TObject>(10);
+                SysClG.List<TObject> acum = new SysClG.List<TObject>(10);
                 foreach (TObject obj in enumerable)
                 {
                     if (acum.Count == acum.Capacity) { acum.Capacity += 10; }
@@ -68,10 +75,10 @@ namespace Libs.LDAP
                 return acum.ToArray();
             }
 
-            public static bool Any<T>(global::System.Collections.Generic.IEnumerable<T> enumerator, global::Libs.LDAP.Core.Verify<T> verifier) { foreach (T obj in enumerator) { if (verifier(obj)) { return true; } } return false; }
-            public static T SingleOrDefault<T>(global::System.Collections.Generic.IEnumerable<T> enumerator, global::Libs.LDAP.Core.Verify<T> verifier) { foreach (T obj in enumerator) { if (verifier(obj)) { return obj; } } return default(T); }
+            public static bool Any<T>(SysClG.IEnumerable<T> enumerator, LCore.Verify<T> verifier) { foreach (T obj in enumerator) { if (verifier(obj)) { return true; } } return false; }
+            public static T SingleOrDefault<T>(SysClG.IEnumerable<T> enumerator, LCore.Verify<T> verifier) { foreach (T obj in enumerator) { if (verifier(obj)) { return obj; } } return default(T); }
 
-            private sealed class ArraySegmentEnumerator<T> : global::System.Collections.Generic.IEnumerator<T>, global::System.Collections.Generic.IEnumerable<T> //https://referencesource.microsoft.com/#mscorlib/system/arraysegment.cs,9b6becbc5eb6a533
+            private sealed class ArraySegmentEnumerator<T> : SysClG.IEnumerator<T>, SysClG.IEnumerable<T> //https://referencesource.microsoft.com/#mscorlib/system/arraysegment.cs,9b6becbc5eb6a533
             {
                 private T[] _array;
                 private int _start;
@@ -88,12 +95,12 @@ namespace Libs.LDAP
                     return false;
                 }
 
-                public T Current { get { if (this._current < this._start) throw new global::System.InvalidOperationException(); else if (this._current >= this._end) throw new global::System.InvalidOperationException(); else return this._array[this._current]; } }
-                global::System.Collections.Generic.IEnumerator<T> global::System.Collections.Generic.IEnumerable<T>.GetEnumerator() { return this; }
-                global::System.Collections.IEnumerator global::System.Collections.IEnumerable.GetEnumerator() { return this; }
-                object global::System.Collections.IEnumerator.Current { get { return this.Current; } }
-                void global::System.Collections.IEnumerator.Reset() { this._current = this._start - 1; }
-                void global::System.IDisposable.Dispose() { /* NOTHING */ }
+                public T Current { get { if (this._current < this._start) throw new Sys.InvalidOperationException(); else if (this._current >= this._end) throw new Sys.InvalidOperationException(); else return this._array[this._current]; } }
+                SysClG.IEnumerator<T> SysClG.IEnumerable<T>.GetEnumerator() { return this; }
+                SysCll.IEnumerator SysCll.IEnumerable.GetEnumerator() { return this; }
+                object SysCll.IEnumerator.Current { get { return this.Current; } }
+                void SysCll.IEnumerator.Reset() { this._current = this._start - 1; }
+                void Sys.IDisposable.Dispose() { /* NOTHING */ }
 
                 internal ArraySegmentEnumerator(T[] Array, int Start, int Count)
                 {
@@ -111,13 +118,13 @@ namespace Libs.LDAP
                 if (bytes[offset] >> 7 == 1)
                 {
                     int lengthoflengthbytes = bytes[offset] & 127;
-                    attributeLength = global::System.BitConverter.ToInt32(global::Libs.LDAP.Core.Utils.Reverse<byte>(new global::Libs.LDAP.Core.Utils.ArraySegmentEnumerator<byte>(bytes, offset + 1, lengthoflengthbytes)), 0);
+                    attributeLength = Sys.BitConverter.ToInt32(LCore.Utils.Reverse<byte>(new LCore.Utils.ArraySegmentEnumerator<byte>(bytes, offset + 1, lengthoflengthbytes)), 0);
                     berByteCount += lengthoflengthbytes;
                 } else { attributeLength = bytes[offset] & 127; }
                 return attributeLength;
             }
 
-            public static int BerLengthToInt(global::System.IO.Stream stream, out int berByteCount)
+            public static int BerLengthToInt(Sys.IO.Stream stream, out int berByteCount)
             {
                 berByteCount = 1;
                 int attributeLength = 0;
@@ -128,7 +135,7 @@ namespace Libs.LDAP
                     int lengthoflengthbytes = berByte[0] & 127;
                     byte[] lengthBytes = new byte[lengthoflengthbytes];
                     stream.Read(lengthBytes, 0, lengthoflengthbytes);
-                    attributeLength = global::System.BitConverter.ToInt32(global::Libs.LDAP.Core.Utils.Reverse<byte>(lengthBytes), 0);
+                    attributeLength = Sys.BitConverter.ToInt32(LCore.Utils.Reverse<byte>(lengthBytes), 0);
                     berByteCount += lengthoflengthbytes;
                 } else { attributeLength = berByte[0] & 127; }
                 return attributeLength;
@@ -136,7 +143,7 @@ namespace Libs.LDAP
 
             public static string Repeat(string stuff, int n)
             {
-                global::System.Text.StringBuilder concat = new global::System.Text.StringBuilder(stuff.Length * n);
+                SysTxt.StringBuilder concat = new SysTxt.StringBuilder(stuff.Length * n);
                 for (int i = 0; i < n; i++) { concat.Append(stuff); }
                 return concat.ToString();
             }
@@ -272,19 +279,19 @@ namespace Libs.LDAP
         public class Tag
         {
             public byte TagByte { get; internal set; }
-            public global::Libs.LDAP.Core.TagClass Class { get { return (global::Libs.LDAP.Core.TagClass)(this.TagByte >> 6); } }
-            public global::Libs.LDAP.Core.UniversalDataType DataType { get { return this.Class == global::Libs.LDAP.Core.TagClass.Universal ? (global::Libs.LDAP.Core.UniversalDataType)(this.TagByte & 31) : global::Libs.LDAP.Core.UniversalDataType.NONE; } }
-            public global::Libs.LDAP.Core.LdapOperation LdapOperation { get { return this.Class == global::Libs.LDAP.Core.TagClass.Application ? (global::Libs.LDAP.Core.LdapOperation)(this.TagByte & 31) : global::Libs.LDAP.Core.LdapOperation.NONE; } }
-            public byte? ContextType { get { return this.Class == global::Libs.LDAP.Core.TagClass.Context ? (byte?)(this.TagByte & 31) : null; } }
-            public static global::Libs.LDAP.Core.Tag Parse(byte tagByte) { return new global::Libs.LDAP.Core.Tag { TagByte = tagByte }; }
-            public override string ToString() { return "Tag[class=" + this.Class.ToString() + ",datatype=" + this.DataType.ToString() + ",ldapoperation=" + this.LdapOperation.ToString() + ",contexttype=" + (this.ContextType == null ? "NULL" : ((global::Libs.LDAP.Core.LdapFilterChoice)this.ContextType).ToString()) + "]"; }
+            public LCore.TagClass Class { get { return (LCore.TagClass)(this.TagByte >> 6); } }
+            public LCore.UniversalDataType DataType { get { return this.Class == LCore.TagClass.Universal ? (LCore.UniversalDataType)(this.TagByte & 31) : LCore.UniversalDataType.NONE; } }
+            public LCore.LdapOperation LdapOperation { get { return this.Class == LCore.TagClass.Application ? (LCore.LdapOperation)(this.TagByte & 31) : LCore.LdapOperation.NONE; } }
+            public byte? ContextType { get { return this.Class == LCore.TagClass.Context ? (byte?)(this.TagByte & 31) : null; } }
+            public static LCore.Tag Parse(byte tagByte) { return new LCore.Tag { TagByte = tagByte }; }
+            public override string ToString() { return "Tag[class=" + this.Class.ToString() + ",datatype=" + this.DataType.ToString() + ",ldapoperation=" + this.LdapOperation.ToString() + ",contexttype=" + (this.ContextType == null ? "NULL" : ((LCore.LdapFilterChoice)this.ContextType).ToString()) + "]"; }
 
             public bool IsConstructed
             {
-                get { return new global::System.Collections.BitArray(new byte[] { this.TagByte }).Get(5); }
+                get { return new SysCll.BitArray(new byte[] { this.TagByte }).Get(5); }
                 set
                 {
-                    global::System.Collections.BitArray foo = new global::System.Collections.BitArray(new byte[] { this.TagByte });
+                    SysCll.BitArray foo = new SysCll.BitArray(new byte[] { this.TagByte });
                     foo.Set(5, value);
                     byte[] temp = new byte[1];
                     foo.CopyTo(temp, 0);
@@ -293,65 +300,65 @@ namespace Libs.LDAP
             }
 
             private Tag() { /* NOTHING */ }
-            public Tag(global::Libs.LDAP.Core.LdapOperation operation) { TagByte = (byte)((byte)operation + ((byte)global::Libs.LDAP.Core.TagClass.Application << 6)); }
-            public Tag(global::Libs.LDAP.Core.UniversalDataType dataType) { TagByte = (byte)(dataType + ((byte)global::Libs.LDAP.Core.TagClass.Universal << 6)); }
-            public Tag(byte context) { TagByte = (byte)(context + ((byte)global::Libs.LDAP.Core.TagClass.Context << 6)); }
+            public Tag(LCore.LdapOperation operation) { TagByte = (byte)((byte)operation + ((byte)LCore.TagClass.Application << 6)); }
+            public Tag(LCore.UniversalDataType dataType) { TagByte = (byte)(dataType + ((byte)LCore.TagClass.Universal << 6)); }
+            public Tag(byte context) { TagByte = (byte)(context + ((byte)LCore.TagClass.Context << 6)); }
         }
 
-        public class LdapAttribute : global::System.IDisposable
+        public class LdapAttribute : Sys.IDisposable
         {
-            private global::Libs.LDAP.Core.Tag _tag;
+            private LCore.Tag _tag;
             protected byte[] Value = new byte[0];
-            public global::System.Collections.Generic.List<global::Libs.LDAP.Core.LdapAttribute> ChildAttributes = new global::System.Collections.Generic.List<global::Libs.LDAP.Core.LdapAttribute>();
-            public global::Libs.LDAP.Core.TagClass Class { get { return this._tag.Class; } }
+            public SysClG.List<LCore.LdapAttribute> ChildAttributes = new SysClG.List<LCore.LdapAttribute>();
+            public LCore.TagClass Class { get { return this._tag.Class; } }
             public bool IsConstructed { get { return (this._tag.IsConstructed || this.ChildAttributes.Count > 0); } }
-            public global::Libs.LDAP.Core.LdapOperation LdapOperation { get { return this._tag.LdapOperation; } }
-            public global::Libs.LDAP.Core.UniversalDataType DataType { get { return this._tag.DataType; } }
+            public LCore.LdapOperation LdapOperation { get { return this._tag.LdapOperation; } }
+            public LCore.UniversalDataType DataType { get { return this._tag.DataType; } }
             public byte? ContextType { get { return this._tag.ContextType; } }
 
             public object GetValue()
             {
-                if (this._tag.Class == global::Libs.LDAP.Core.TagClass.Universal)
+                if (this._tag.Class == LCore.TagClass.Universal)
                 {
                     switch (this._tag.DataType)
                     {
-                        case global::Libs.LDAP.Core.UniversalDataType.Boolean: return global::System.BitConverter.ToBoolean(this.Value, 0);
-                        case global::Libs.LDAP.Core.UniversalDataType.Integer:
+                        case LCore.UniversalDataType.Boolean: return Sys.BitConverter.ToBoolean(this.Value, 0);
+                        case LCore.UniversalDataType.Integer:
                             byte[] intbytes = new byte[4];
-                            global::System.Buffer.BlockCopy(this.Value, 0, intbytes, 4 - this.Value.Length, this.Value.Length);
-                            global::System.Array.Reverse(intbytes);
-                            return global::System.BitConverter.ToInt32(intbytes, 0);
-                        default: return global::System.Text.Encoding.UTF8.GetString(this.Value, 0, this.Value.Length);
+                            Sys.Buffer.BlockCopy(this.Value, 0, intbytes, 4 - this.Value.Length, this.Value.Length);
+                            Sys.Array.Reverse(intbytes);
+                            return Sys.BitConverter.ToInt32(intbytes, 0);
+                        default: return SysTxt.Encoding.UTF8.GetString(this.Value, 0, this.Value.Length);
                     }
                 }
-                return global::System.Text.Encoding.UTF8.GetString(Value, 0, Value.Length);
+                return SysTxt.Encoding.UTF8.GetString(Value, 0, Value.Length);
             }
 
             private byte[] GetBytes(object val)
             {
-                global::System.Type typeOFval = val.GetType();
-                if (typeOFval == typeof(string)) { return global::System.Text.Encoding.UTF8.GetBytes(val as string); }
-                else if (typeOFval == typeof(int)) { return global::Libs.LDAP.Core.Utils.Reverse<byte>(global::System.BitConverter.GetBytes((int)val)); }
+                Sys.Type typeOFval = val.GetType();
+                if (typeOFval == typeof(string)) { return SysTxt.Encoding.UTF8.GetBytes(val as string); }
+                else if (typeOFval == typeof(int)) { return LCore.Utils.Reverse<byte>(Sys.BitConverter.GetBytes((int)val)); }
                 else if (typeOFval == typeof(byte)) { return new byte[] { (byte)val }; }
-                else if (typeOFval == typeof(bool)) { return global::System.BitConverter.GetBytes((bool)val); }
+                else if (typeOFval == typeof(bool)) { return Sys.BitConverter.GetBytes((bool)val); }
                 else if (typeOFval == typeof(byte[])) { return (val as byte[]); }
-                else { throw new global::System.InvalidOperationException("Nothing found for " + typeOFval); }
+                else { throw new Sys.InvalidOperationException("Nothing found for " + typeOFval); }
             }
 
-            public override string ToString() { return this._tag.ToString() + ",Value={" + ((this.Value == null || this.Value.Length == 0) ? "\"\"" : global::System.Text.Encoding.UTF8.GetString(this.Value)) + "},attr=" + this.ChildAttributes.Count.ToString(); }
-            public T GetValue<T>() { return (T)global::System.Convert.ChangeType(this.GetValue(), typeof(T)); }
+            public override string ToString() { return this._tag.ToString() + ",Value={" + ((this.Value == null || this.Value.Length == 0) ? "\"\"" : SysTxt.Encoding.UTF8.GetString(this.Value)) + "},attr=" + this.ChildAttributes.Count.ToString(); }
+            public T GetValue<T>() { return (T)SysConv.ChangeType(this.GetValue(), typeof(T)); }
 
             public byte[] GetBytes()
             {
-                global::System.Collections.Generic.List<byte> contentBytes = new global::System.Collections.Generic.List<byte>();
+                SysClG.List<byte> contentBytes = new SysClG.List<byte>();
                 if (ChildAttributes.Count > 0)
                 {
                     this._tag.IsConstructed = true;
-                    foreach (global::Libs.LDAP.Core.LdapAttribute attr in this.ChildAttributes) { contentBytes.AddRange(attr.GetBytes()); }
+                    foreach (LCore.LdapAttribute attr in this.ChildAttributes) { contentBytes.AddRange(attr.GetBytes()); }
                 } else { contentBytes.AddRange(Value); }
-                global::System.Collections.Generic.List<byte> ret = new System.Collections.Generic.List<byte>(1);
+                SysClG.List<byte> ret = new System.Collections.Generic.List<byte>(1);
                 ret.Add(this._tag.TagByte);
-                ret.AddRange(global::Libs.LDAP.Core.Utils.IntToBerLength(contentBytes.Count));
+                ret.AddRange(LCore.Utils.IntToBerLength(contentBytes.Count));
                 ret.Capacity += contentBytes.Count;
                 ret.AddRange(contentBytes);
                 contentBytes.Clear();
@@ -362,26 +369,26 @@ namespace Libs.LDAP
             public virtual void Dispose()
             {
                 this.Value = null;
-                foreach (global::Libs.LDAP.Core.LdapAttribute attr in this.ChildAttributes) { attr.Dispose(); }
+                foreach (LCore.LdapAttribute attr in this.ChildAttributes) { attr.Dispose(); }
                 this.ChildAttributes.Clear();
             }
 
-            protected static global::System.Collections.Generic.List<global::Libs.LDAP.Core.LdapAttribute> ParseAttributes(byte[] bytes, int currentPosition, int length)
+            protected static SysClG.List<LCore.LdapAttribute> ParseAttributes(byte[] bytes, int currentPosition, int length)
             {
-                global::System.Collections.Generic.List<global::Libs.LDAP.Core.LdapAttribute> list = new global::System.Collections.Generic.List<global::Libs.LDAP.Core.LdapAttribute>();
+                SysClG.List<LCore.LdapAttribute> list = new SysClG.List<LCore.LdapAttribute>();
                 while (currentPosition < length)
                 {
-                    global::Libs.LDAP.Core.Tag tag = global::Libs.LDAP.Core.Tag.Parse(bytes[currentPosition]);
+                    LCore.Tag tag = LCore.Tag.Parse(bytes[currentPosition]);
                     currentPosition++;
                     int i = 0;
-                    int attributeLength = global::Libs.LDAP.Core.Utils.BerLengthToInt(bytes, currentPosition, out i);
+                    int attributeLength = LCore.Utils.BerLengthToInt(bytes, currentPosition, out i);
                     currentPosition += i;
-                    global::Libs.LDAP.Core.LdapAttribute attribute = new global::Libs.LDAP.Core.LdapAttribute(tag);
+                    LCore.LdapAttribute attribute = new LCore.LdapAttribute(tag);
                     if (tag.IsConstructed && attributeLength > 0) { attribute.ChildAttributes = ParseAttributes(bytes, currentPosition, currentPosition + attributeLength); }
                     else
                     {
                         attribute.Value = new byte[attributeLength];
-                        global::System.Buffer.BlockCopy(bytes, currentPosition, attribute.Value, 0, attributeLength);
+                        Sys.Buffer.BlockCopy(bytes, currentPosition, attribute.Value, 0, attributeLength);
                     }
                     list.Add(attribute);
                     currentPosition += attributeLength;
@@ -389,39 +396,39 @@ namespace Libs.LDAP
                 return list;
             }
 
-            protected LdapAttribute(global::Libs.LDAP.Core.Tag tag) { this._tag = tag; }
-            public LdapAttribute(global::Libs.LDAP.Core.LdapOperation operation) { this._tag = new global::Libs.LDAP.Core.Tag(operation); }
-            public LdapAttribute(global::Libs.LDAP.Core.LdapOperation operation, object value) : this(operation) { this.Value = this.GetBytes(value); }
-            public LdapAttribute(global::Libs.LDAP.Core.UniversalDataType dataType) { this._tag = new global::Libs.LDAP.Core.Tag(dataType); }
-            public LdapAttribute(global::Libs.LDAP.Core.UniversalDataType dataType, object value) : this(dataType) { this.Value = this.GetBytes(value); }
-            public LdapAttribute(byte contextType) { this._tag = new global::Libs.LDAP.Core.Tag(contextType); }
+            protected LdapAttribute(LCore.Tag tag) { this._tag = tag; }
+            public LdapAttribute(LCore.LdapOperation operation) { this._tag = new LCore.Tag(operation); }
+            public LdapAttribute(LCore.LdapOperation operation, object value) : this(operation) { this.Value = this.GetBytes(value); }
+            public LdapAttribute(LCore.UniversalDataType dataType) { this._tag = new LCore.Tag(dataType); }
+            public LdapAttribute(LCore.UniversalDataType dataType, object value) : this(dataType) { this.Value = this.GetBytes(value); }
+            public LdapAttribute(byte contextType) { this._tag = new LCore.Tag(contextType); }
             public LdapAttribute(byte contextType, object value) : this(contextType) { this.Value = this.GetBytes(value); }
         }
 
-        public class LdapResultAttribute : global::Libs.LDAP.Core.LdapAttribute
+        public class LdapResultAttribute : LCore.LdapAttribute
         {
-            public LdapResultAttribute(global::Libs.LDAP.Core.LdapOperation operation, global::Libs.LDAP.Core.LdapResult result, string matchedDN = "", string diagnosticMessage = "") : base(operation)
+            public LdapResultAttribute(LCore.LdapOperation operation, LCore.LdapResult result, string matchedDN = "", string diagnosticMessage = "") : base(operation)
             {
-                this.ChildAttributes.Add(new global::Libs.LDAP.Core.LdapAttribute(global::Libs.LDAP.Core.UniversalDataType.Enumerated, (byte)result));
-                this.ChildAttributes.Add(new global::Libs.LDAP.Core.LdapAttribute(global::Libs.LDAP.Core.UniversalDataType.OctetString, matchedDN));
-                this.ChildAttributes.Add(new global::Libs.LDAP.Core.LdapAttribute(global::Libs.LDAP.Core.UniversalDataType.OctetString, diagnosticMessage));
+                this.ChildAttributes.Add(new LCore.LdapAttribute(LCore.UniversalDataType.Enumerated, (byte)result));
+                this.ChildAttributes.Add(new LCore.LdapAttribute(LCore.UniversalDataType.OctetString, matchedDN));
+                this.ChildAttributes.Add(new LCore.LdapAttribute(LCore.UniversalDataType.OctetString, diagnosticMessage));
             }
         }
 
-        public class LdapPacket : global::Libs.LDAP.Core.LdapAttribute
+        public class LdapPacket : LCore.LdapAttribute
         {
             public int MessageId { get { return this.ChildAttributes[0].GetValue<int>(); } }
 
-            public static global::Libs.LDAP.Core.LdapPacket ParsePacket(byte[] bytes)
+            public static LCore.LdapPacket ParsePacket(byte[] bytes)
             {
-                global::Libs.LDAP.Core.LdapPacket packet = new global::Libs.LDAP.Core.LdapPacket(global::Libs.LDAP.Core.Tag.Parse(bytes[0]));
+                LCore.LdapPacket packet = new LCore.LdapPacket(LCore.Tag.Parse(bytes[0]));
                 int lengthBytesCount = 0;
-                int contentLength = global::Libs.LDAP.Core.Utils.BerLengthToInt(bytes, 1, out lengthBytesCount);
-                packet.ChildAttributes.AddRange(global::Libs.LDAP.Core.LdapAttribute.ParseAttributes(bytes, 1 + lengthBytesCount, contentLength));
+                int contentLength = LCore.Utils.BerLengthToInt(bytes, 1, out lengthBytesCount);
+                packet.ChildAttributes.AddRange(LCore.LdapAttribute.ParseAttributes(bytes, 1 + lengthBytesCount, contentLength));
                 return packet;
             }
 
-            public static bool TryParsePacket(global::System.IO.Stream stream, out global::Libs.LDAP.Core.LdapPacket packet)
+            public static bool TryParsePacket(Sys.IO.Stream stream, out LCore.LdapPacket packet)
             {
                 try
                 {
@@ -432,11 +439,11 @@ namespace Libs.LDAP
                         if (i != 0)
                         {
                             int n = 0;
-                            int contentLength = global::Libs.LDAP.Core.Utils.BerLengthToInt(stream, out n);
+                            int contentLength = LCore.Utils.BerLengthToInt(stream, out n);
                             byte[] contentBytes = new byte[contentLength];
                             stream.Read(contentBytes, 0, contentLength);
-                            packet = new global::Libs.LDAP.Core.LdapPacket(global::Libs.LDAP.Core.Tag.Parse(tagByte[0]));
-                            packet.ChildAttributes.AddRange(global::Libs.LDAP.Core.LdapAttribute.ParseAttributes(contentBytes, 0, contentLength));
+                            packet = new LCore.LdapPacket(LCore.Tag.Parse(tagByte[0]));
+                            packet.ChildAttributes.AddRange(LCore.LdapAttribute.ParseAttributes(contentBytes, 0, contentLength));
                             return true;
                         }
                     }
@@ -445,8 +452,8 @@ namespace Libs.LDAP
                 return false;
             }
 
-            private LdapPacket(global::Libs.LDAP.Core.Tag tag) : base(tag) { /* NOTHING */ }
-            public LdapPacket(int messageId) : base(global::Libs.LDAP.Core.UniversalDataType.Sequence) { this.ChildAttributes.Add(new global::Libs.LDAP.Core.LdapAttribute(global::Libs.LDAP.Core.UniversalDataType.Integer, messageId)); }
+            private LdapPacket(LCore.Tag tag) : base(tag) { /* NOTHING */ }
+            public LdapPacket(int messageId) : base(LCore.UniversalDataType.Sequence) { this.ChildAttributes.Add(new LCore.LdapAttribute(LCore.UniversalDataType.Integer, messageId)); }
         }
     }
 
@@ -478,12 +485,12 @@ namespace Libs.LDAP
         string AdminUser { get; }
         string AdminPassword { get; }
         string LDAPRoot { get; }
-        global::Libs.LDAP.ICompany Company { get; }
+        LDap.ICompany Company { get; }
         bool Validate(string UserName, string Password, out bool IsAdmin);
-        global::System.Collections.Generic.IEnumerable<global::Libs.LDAP.IUserData> ListUsers();
+        SysClG.IEnumerable<LDap.IUserData> ListUsers();
     }
 
-    internal class UserData : global::Libs.LDAP.IUserData //testing purposes only
+    internal class UserData : LDap.IUserData //testing purposes only
     {
         public string UserName { get; set; }
         public string FirstName { get; set; }
@@ -506,7 +513,7 @@ namespace Libs.LDAP
         public UserData(string UserName) : this(UserName, (UserName == null ? string.Empty : (UserName.Contains("@") ? UserName : string.Empty)), string.Empty, string.Empty) { /* NOTHING */ }
     }
 
-    internal class Company : global::Libs.LDAP.ICompany //testing purposes only
+    internal class Company : LDap.ICompany //testing purposes only
     {
         public string Name { get; set; }
         public string Phone { get; set; }
@@ -517,17 +524,17 @@ namespace Libs.LDAP
         public string Address { get; set; }
     }
 
-    internal class TestSource : global::Libs.LDAP.IDataSource //testing purposes only
+    internal class TestSource : LDap.IDataSource //testing purposes only
     {
-        public global::Libs.LDAP.ICompany Company { get; protected set; }
+        public LDap.ICompany Company { get; protected set; }
         public string LDAPRoot { get { return "cn=Users,dc=dev,dc=company,dc=com"; } }
         public string AdminUser { get { return "admin"; } }
-        public string AdminPassword { get { return "3462EB3"; } }
+        public string AdminPassword { get { return "12345"; } }
 
-        public global::System.Collections.Generic.IEnumerable<global::Libs.LDAP.IUserData> ListUsers()
+        public SysClG.IEnumerable<LDap.IUserData> ListUsers()
         {
-            yield return new global::Libs.LDAP.UserData("username1", "add.user1@company.com", "nm1", "sn1") { Department = "Fictional 1", Job = "Director" };
-            yield return new global::Libs.LDAP.UserData("username2", "add.user2@company.com", "nm2", "sn2") { Department = "Fictional 2", Job = "Lacky" };
+            yield return new LDap.UserData("username1", "add.user1@company.com", "nm1", "sn1") { Department = "Fictional 1", Job = "Director" };
+            yield return new LDap.UserData("username2", "add.user2@company.com", "nm2", "sn2") { Department = "Fictional 2", Job = "Lacky" };
         }
 
         public bool Validate(string UserName, string Password, out bool IsAdmin)
@@ -540,12 +547,12 @@ namespace Libs.LDAP
             else
             {
                 IsAdmin = false;
-                foreach (global::Libs.LDAP.IUserData user in this.ListUsers()) { if (user.UserName == UserName) { return user.TestPassword(Password); } }
+                foreach (LDap.IUserData user in this.ListUsers()) { if (user.UserName == UserName) { return user.TestPassword(Password); } }
                 return false;
             }
         }
 
-        public TestSource() { this.Company = new global::Libs.LDAP.Company() { Name = "company", Phone = "+5500900000000", Country = "ACountry", State = "STT", City = "CityOfCom", PostCode = "10200300", Address = "An Adress of" }; }
+        public TestSource() { this.Company = new LDap.Company() { Name = "company", Phone = "+5500900000000", Country = "ACountry", State = "STT", City = "CityOfCom", PostCode = "10200300", Address = "An Adress of" }; }
     }
 
     public class Server //https://github.com/vforteli/Flexinets.Ldap.Server/blob/master/LdapServer.cs 
@@ -553,10 +560,10 @@ namespace Libs.LDAP
         public const int StandardPort = 389;
         public const string PosixAccount = "PosixAccount";
         public const string AMAccount = "sAMAccountName";
-        private readonly global::System.Net.Sockets.TcpListener _server;
-        private global::Libs.LDAP.IDataSource _validator;
-        public global::Libs.LDAP.IDataSource Validator { get { return this._validator; } }
-        private bool IsValidType(string type) { return (type == "objectClass" || type == global::Libs.LDAP.Server.PosixAccount || type == global::Libs.LDAP.Server.AMAccount); }
+        private readonly SysSock.TcpListener _server;
+        private LDap.IDataSource _validator;
+        public LDap.IDataSource Validator { get { return this._validator; } }
+        private bool IsValidType(string type) { return (type == "objectClass" || type == LDap.Server.PosixAccount || type == LDap.Server.AMAccount); }
         public void Stop() { if (this._server != null) { this._server.Stop(); } }
 
         public void Start()
@@ -565,53 +572,44 @@ namespace Libs.LDAP
             this._server.BeginAcceptTcpClient(this.OnClientConnect, null);
         }
 
-        private void AddAttribute(global::Libs.LDAP.Core.LdapAttribute partialAttributeList, string AttributeName, params string[] AttributeValues)
+        private void AddAttribute(LCore.LdapAttribute partialAttributeList, string AttributeName, params string[] AttributeValues)
         {
             if (AttributeValues != null && AttributeValues.Length > 0)
             {
-                global::Libs.LDAP.Core.LdapAttribute partialAttr = new global::Libs.LDAP.Core.LdapAttribute(global::Libs.LDAP.Core.UniversalDataType.Sequence);
-                partialAttr.ChildAttributes.Add(new global::Libs.LDAP.Core.LdapAttribute(global::Libs.LDAP.Core.UniversalDataType.OctetString, AttributeName));
-                global::Libs.LDAP.Core.LdapAttribute partialAttrVals = new global::Libs.LDAP.Core.LdapAttribute(global::Libs.LDAP.Core.UniversalDataType.Set);
-                foreach (string AttributeValue in AttributeValues) { partialAttrVals.ChildAttributes.Add(new global::Libs.LDAP.Core.LdapAttribute(global::Libs.LDAP.Core.UniversalDataType.OctetString, AttributeValue)); }
+                LCore.LdapAttribute partialAttr = new LCore.LdapAttribute(LCore.UniversalDataType.Sequence);
+                partialAttr.ChildAttributes.Add(new LCore.LdapAttribute(LCore.UniversalDataType.OctetString, AttributeName));
+                LCore.LdapAttribute partialAttrVals = new LCore.LdapAttribute(LCore.UniversalDataType.Set);
+                foreach (string AttributeValue in AttributeValues) { partialAttrVals.ChildAttributes.Add(new LCore.LdapAttribute(LCore.UniversalDataType.OctetString, AttributeValue)); }
                 partialAttr.ChildAttributes.Add(partialAttrVals);
                 partialAttributeList.ChildAttributes.Add(partialAttr);
             }
         }
 
         //'... Resolve this URGENTLY!
-        private global::Libs.LDAP.Core.LdapPacket RespondUserData(global::Libs.LDAP.IUserData user, int MessageID, bool Simple)
+        private LCore.LdapPacket RespondUserData(LDap.IUserData user, int MessageID, bool Simple)
         {
-            global::Libs.LDAP.Core.LdapAttribute searchResultEntry = new global::Libs.LDAP.Core.LdapAttribute(global::Libs.LDAP.Core.LdapOperation.SearchResultEntry);
-            searchResultEntry.ChildAttributes.Add(new global::Libs.LDAP.Core.LdapAttribute(global::Libs.LDAP.Core.UniversalDataType.OctetString, ("cn=" + user.UserName + "," + this._validator.LDAPRoot)));
-            global::Libs.LDAP.Core.LdapAttribute partialAttributeList = new global::Libs.LDAP.Core.LdapAttribute(global::Libs.LDAP.Core.UniversalDataType.Sequence);
-            //outlook request asked for options on the options section of the request (child[7]) as below | for some reason, sending more than 8 properties for outlook prevents it from completing the task (on outlook side)
-            //this.AddAttribute(partialAttributeList, "cn", user.UserName);
-            //this.AddAttribute(partialAttributeList, "commonName", user.UserName);
-            //this.AddAttribute(partialAttributeList, "mail", user.EMail);
-            if (!Simple)
-            {
-                //--- this.AddAttribute(partialAttributeList, "roleOccupant", "?"); //unused
-            }
-            //this.AddAttribute(partialAttributeList, "display-name", user.FullName);
-            //this.AddAttribute(partialAttributeList, "displayname", user.FullName);
-            if (!Simple)
-            {
-                //this.AddAttribute(partialAttributeList, "sn", user.LastName);
-                //this.AddAttribute(partialAttributeList, "surname", user.LastName);
-                //this.AddAttribute(partialAttributeList, "co", this._validator.Company.Country);
-                //this.AddAttribute(partialAttributeList, "organizationName", this._validator.Company.Name);
-                //--- this.AddAttribute(partialAttributeList, "o", "?"); //unused
-                //this.AddAttribute(partialAttributeList, "givenName", user.FirstName);
-                //--- this.AddAttribute(partialAttributeList, "legacyExcangeDN", "?"); //i have no need (don't know whats for)
-                //this.AddAttribute(partialAttributeList, "objectClass", "?");
-                //this.AddAttribute(partialAttributeList, "uid", "?");
-                //this.AddAttribute(partialAttributeList, "mailNickname", user.FullName);
-                //this.AddAttribute(partialAttributeList, "title", user.Job);
-            }
+            LCore.LdapAttribute searchResultEntry = new LCore.LdapAttribute(LCore.LdapOperation.SearchResultEntry);
+            searchResultEntry.ChildAttributes.Add(new LCore.LdapAttribute(LCore.UniversalDataType.OctetString, ("cn=" + user.UserName + "," + this._validator.LDAPRoot)));
+            LCore.LdapAttribute partialAttributeList = new LCore.LdapAttribute(LCore.UniversalDataType.Sequence);
+            //outlook request asked for options on the options section of the request (child[7]) as below
+            //'... for some reason, sending more than 8 properties for outlook prevents it from completing the task (on outlook side)
+            this.AddAttribute(partialAttributeList, "cn", user.UserName);
+            this.AddAttribute(partialAttributeList, "commonName", user.UserName);
+            this.AddAttribute(partialAttributeList, "mail", user.EMail);
+            this.AddAttribute(partialAttributeList, "display-name", user.FullName);
+            this.AddAttribute(partialAttributeList, "displayname", user.FullName);
             //this.AddAttribute(partialAttributeList, "company", this._validator.Company.Name);
             if (!Simple)
             {
-                //--- this.AddAttribute(partialAttributeList, "physicalDeliveryOfficeName", "?"); //i have no need
+                //this.AddAttribute(partialAttributeList, "sn", user.LastName);
+                this.AddAttribute(partialAttributeList, "surname", user.LastName);
+                //this.AddAttribute(partialAttributeList, "co", this._validator.Company.Country);
+                //this.AddAttribute(partialAttributeList, "organizationName", this._validator.Company.Name);
+                this.AddAttribute(partialAttributeList, "givenName", user.FirstName);
+                //this.AddAttribute(partialAttributeList, "objectClass", "?");
+                //this.AddAttribute(partialAttributeList, "uid", "?");
+                this.AddAttribute(partialAttributeList, "mailNickname", user.FullName);
+                //this.AddAttribute(partialAttributeList, "title", user.Job);
                 //this.AddAttribute(partialAttributeList, "telephoneNumber", this._validator.Company.Phone);
                 //if (!string.IsNullOrEmpty(user.FirstName) && !string.IsNullOrEmpty(user.LastName)) { this.AddAttribute(partialAttributeList, "initials", (user.FirstName.Substring(0, 1) + user.LastName.Substring(0, 1))); }
                 //this.AddAttribute(partialAttributeList, "postalAddress", this._validator.Company.Address);
@@ -619,91 +617,95 @@ namespace Libs.LDAP
                 //this.AddAttribute(partialAttributeList, "st", this._validator.Company.State);
                 //this.AddAttribute(partialAttributeList, "postalCode", this._validator.Company.PostCode);
                 //this.AddAttribute(partialAttributeList, "ou", user.Department);
-                //--- this.AddAttribute(partialAttributeList, "organizationUnitName", "?"); //unused
                 //this.AddAttribute(partialAttributeList, "department", user.Department);
+                //--- this.AddAttribute(partialAttributeList, "o", "?"); //unused
+                //--- this.AddAttribute(partialAttributeList, "legacyExcangeDN", "?"); //i have no need (don't know whats for)
+                //--- this.AddAttribute(partialAttributeList, "physicalDeliveryOfficeName", "?"); //i have no need
                 //--- this.AddAttribute(partialAttributeList, "secretary", "?"); //i have no need
+                //--- this.AddAttribute(partialAttributeList, "roleOccupant", "?"); //unused
+                //--- this.AddAttribute(partialAttributeList, "organizationUnitName", "?"); //unused
             }
             searchResultEntry.ChildAttributes.Add(partialAttributeList);
-            global::Libs.LDAP.Core.LdapPacket response = new global::Libs.LDAP.Core.LdapPacket(MessageID);
+            LCore.LdapPacket response = new LCore.LdapPacket(MessageID);
             response.ChildAttributes.Add(searchResultEntry);
             return response;
         }
 
-        private void WriteAttributes(byte[] pkB, global::System.Net.Sockets.NetworkStream stream) { stream.Write(pkB, 0, pkB.Length); }
-        private void WriteAttributes(global::Libs.LDAP.Core.LdapAttribute attr, global::System.Net.Sockets.NetworkStream stream) { this.WriteAttributes(attr.GetBytes(), stream); }
-        private void ReturnAllUsers(global::System.Net.Sockets.NetworkStream stream, int MessageID) { foreach (global::Libs.LDAP.IUserData user in this._validator.ListUsers()) { using (global::Libs.LDAP.Core.LdapPacket pkO = this.RespondUserData(user, MessageID, true)) { this.WriteAttributes(pkO, stream); } } }
+        private void WriteAttributes(byte[] pkB, SysSock.NetworkStream stream) { stream.Write(pkB, 0, pkB.Length); }
+        private void WriteAttributes(LCore.LdapAttribute attr, SysSock.NetworkStream stream) { this.WriteAttributes(attr.GetBytes(), stream); }
+        private void ReturnAllUsers(SysSock.NetworkStream stream, int MessageID) { foreach (LDap.IUserData user in this._validator.ListUsers()) { using (LCore.LdapPacket pkO = this.RespondUserData(user, MessageID, true)) { this.WriteAttributes(pkO, stream); } } }
 
-        private void ReturnSingleUser(global::System.Net.Sockets.NetworkStream stream, int MessageID, string UserName)
+        private void ReturnSingleUser(SysSock.NetworkStream stream, int MessageID, string UserName)
         {
             if (!string.IsNullOrEmpty(UserName))
             {
                 UserName = UserName.ToLower();
-                foreach (global::Libs.LDAP.IUserData user in this._validator.ListUsers()) { if (user.UserName == UserName) { using (global::Libs.LDAP.Core.LdapPacket pkO = this.RespondUserData(user, MessageID, false)) { this.WriteAttributes(pkO, stream); } break; } }
+                foreach (LDap.IUserData user in this._validator.ListUsers()) { if (user.UserName == UserName) { using (LCore.LdapPacket pkO = this.RespondUserData(user, MessageID, false)) { this.WriteAttributes(pkO, stream); } break; } }
             }
         }
 
-        private void ReturnTrue(global::System.Net.Sockets.NetworkStream stream, int MessageID)
+        private void ReturnTrue(SysSock.NetworkStream stream, int MessageID)
         {
-            global::Libs.LDAP.Core.LdapPacket pkO = new global::Libs.LDAP.Core.LdapPacket(MessageID);
-            pkO.ChildAttributes.Add(new global::Libs.LDAP.Core.LdapAttribute(global::Libs.LDAP.Core.UniversalDataType.Boolean, true));
-            pkO.ChildAttributes.Add(new global::Libs.LDAP.Core.LdapAttribute(global::Libs.LDAP.Core.UniversalDataType.Sequence));
+            LCore.LdapPacket pkO = new LCore.LdapPacket(MessageID);
+            pkO.ChildAttributes.Add(new LCore.LdapAttribute(LCore.UniversalDataType.Boolean, true));
+            pkO.ChildAttributes.Add(new LCore.LdapAttribute(LCore.UniversalDataType.Sequence));
             byte[] pkB = pkO.GetBytes();
             pkO.Dispose();
             stream.Write(pkB, 0, pkB.Length);
         }
 
         //'... make better handling of the filters!
-        private void HandleSearchRequest(global::System.Net.Sockets.NetworkStream stream, global::Libs.LDAP.Core.LdapPacket requestPacket, bool IsAdmin)
+        private void HandleSearchRequest(SysSock.NetworkStream stream, LCore.LdapPacket requestPacket, bool IsAdmin)
         {
-            global::Libs.LDAP.Core.LdapAttribute searchRequest = global::Libs.LDAP.Core.Utils.SingleOrDefault<global::Libs.LDAP.Core.LdapAttribute>(requestPacket.ChildAttributes, o => { return o.LdapOperation == global::Libs.LDAP.Core.LdapOperation.SearchRequest; });
-            global::Libs.LDAP.Core.LdapPacket responsePacket = new global::Libs.LDAP.Core.LdapPacket(requestPacket.MessageId);
-            if (searchRequest == null) { responsePacket.ChildAttributes.Add(new global::Libs.LDAP.Core.LdapResultAttribute(global::Libs.LDAP.Core.LdapOperation.SearchResultDone, global::Libs.LDAP.Core.LdapResult.compareFalse)); }
+            LCore.LdapAttribute searchRequest = LCore.Utils.SingleOrDefault<LCore.LdapAttribute>(requestPacket.ChildAttributes, o => { return o.LdapOperation == LCore.LdapOperation.SearchRequest; });
+            LCore.LdapPacket responsePacket = new LCore.LdapPacket(requestPacket.MessageId);
+            if (searchRequest == null) { responsePacket.ChildAttributes.Add(new LCore.LdapResultAttribute(LCore.LdapOperation.SearchResultDone, LCore.LdapResult.compareFalse)); }
             else
             {
                 string arg = searchRequest.ChildAttributes[0].GetValue<string>();
                 if (arg != null && arg.Contains(this._validator.LDAPRoot))
                 {
-                    global::Libs.LDAP.Core.LdapAttribute filter = searchRequest.ChildAttributes[6];
-                    global::Libs.LDAP.Core.LdapFilterChoice filterMode = (global::Libs.LDAP.Core.LdapFilterChoice)filter.ContextType;
+                    LCore.LdapAttribute filter = searchRequest.ChildAttributes[6];
+                    LCore.LdapFilterChoice filterMode = (LCore.LdapFilterChoice)filter.ContextType;
                     arg = arg.Trim().Replace(this._validator.LDAPRoot, string.Empty).Trim();
                     if (arg.EndsWith(",")) { arg = arg.Substring(0, (arg.Length - 1)); }
                     if (arg.StartsWith("cn=")) { arg = arg.Substring(3); }
                     switch (filterMode)
                     {
-                        case global::Libs.LDAP.Core.LdapFilterChoice.equalityMatch: this.ReturnSingleUser(stream, requestPacket.MessageId, arg); break;
-                        case global::Libs.LDAP.Core.LdapFilterChoice.and:
-                        case global::Libs.LDAP.Core.LdapFilterChoice.or: if (string.IsNullOrEmpty(arg) || this.IsValidType(arg)) { this.ReturnAllUsers(stream, requestPacket.MessageId); } else { this.ReturnSingleUser(stream, requestPacket.MessageId, arg); } break;
-                        case global::Libs.LDAP.Core.LdapFilterChoice.present: this.ReturnSingleUser(stream, requestPacket.MessageId, arg); break;
+                        case LCore.LdapFilterChoice.equalityMatch: this.ReturnSingleUser(stream, requestPacket.MessageId, arg); break;
+                        case LCore.LdapFilterChoice.and:
+                        case LCore.LdapFilterChoice.or: if (string.IsNullOrEmpty(arg) || this.IsValidType(arg)) { this.ReturnAllUsers(stream, requestPacket.MessageId); } else { this.ReturnSingleUser(stream, requestPacket.MessageId, arg); } break;
+                        case LCore.LdapFilterChoice.present: this.ReturnSingleUser(stream, requestPacket.MessageId, arg); break;
                     }
                 }
-                responsePacket.ChildAttributes.Add(new global::Libs.LDAP.Core.LdapResultAttribute(global::Libs.LDAP.Core.LdapOperation.SearchResultDone, global::Libs.LDAP.Core.LdapResult.success));
+                responsePacket.ChildAttributes.Add(new LCore.LdapResultAttribute(LCore.LdapOperation.SearchResultDone, LCore.LdapResult.success));
             }
             byte[] responseBytes = responsePacket.GetBytes();
             stream.Write(responseBytes, 0, responseBytes.Length);
         }
 
-        private bool HandleBindRequest(global::System.IO.Stream stream, global::Libs.LDAP.Core.LdapPacket requestPacket, out bool IsAdmin)
+        private bool HandleBindRequest(Sys.IO.Stream stream, LCore.LdapPacket requestPacket, out bool IsAdmin)
         {
             IsAdmin = false;
-            global::Libs.LDAP.Core.LdapAttribute bindrequest = global::Libs.LDAP.Core.Utils.SingleOrDefault<global::Libs.LDAP.Core.LdapAttribute>(requestPacket.ChildAttributes, o => { return o.LdapOperation == global::Libs.LDAP.Core.LdapOperation.BindRequest; });
+            LCore.LdapAttribute bindrequest = LCore.Utils.SingleOrDefault<LCore.LdapAttribute>(requestPacket.ChildAttributes, o => { return o.LdapOperation == LCore.LdapOperation.BindRequest; });
             if (bindrequest == null) { return false; }
             else
             {
                 string username = bindrequest.ChildAttributes[1].GetValue<string>();
                 string password = bindrequest.ChildAttributes[2].GetValue<string>();
-                global::Libs.LDAP.Core.LdapResult response = global::Libs.LDAP.Core.LdapResult.invalidCredentials;
-                if (this._validator.Validate(username, password, out IsAdmin)) { response = global::Libs.LDAP.Core.LdapResult.success; }
-                global::Libs.LDAP.Core.LdapPacket responsePacket = new global::Libs.LDAP.Core.LdapPacket(requestPacket.MessageId);
-                responsePacket.ChildAttributes.Add(new global::Libs.LDAP.Core.LdapResultAttribute(global::Libs.LDAP.Core.LdapOperation.BindResponse, response));
+                LCore.LdapResult response = LCore.LdapResult.invalidCredentials;
+                if (this._validator.Validate(username, password, out IsAdmin)) { response = LCore.LdapResult.success; }
+                LCore.LdapPacket responsePacket = new LCore.LdapPacket(requestPacket.MessageId);
+                responsePacket.ChildAttributes.Add(new LCore.LdapResultAttribute(LCore.LdapOperation.BindResponse, response));
                 byte[] responseBytes = responsePacket.GetBytes();
                 stream.Write(responseBytes, 0, responseBytes.Length);
-                return (response == global::Libs.LDAP.Core.LdapResult.success);
+                return (response == LCore.LdapResult.success);
             }
         }
 
-        private void OnClientConnect(global::System.IAsyncResult asyn) { this.HandleClient(this._server.EndAcceptTcpClient(asyn)); }
+        private void OnClientConnect(Sys.IAsyncResult asyn) { this.HandleClient(this._server.EndAcceptTcpClient(asyn)); }
 
-        private void HandleClient(global::System.Net.Sockets.TcpClient client)
+        private void HandleClient(SysSock.TcpClient client)
         {
             this._server.BeginAcceptTcpClient(this.OnClientConnect, null);
             try
@@ -711,12 +713,12 @@ namespace Libs.LDAP
                 bool isBound = false;
                 bool IsAdmin = false;
                 bool nonSearch = true;
-                global::System.Net.Sockets.NetworkStream stream = client.GetStream();
-                global::Libs.LDAP.Core.LdapPacket requestPacket = null;
-                while (global::Libs.LDAP.Core.LdapPacket.TryParsePacket(stream, out requestPacket))
+                SysSock.NetworkStream stream = client.GetStream();
+                LCore.LdapPacket requestPacket = null;
+                while (LCore.LdapPacket.TryParsePacket(stream, out requestPacket))
                 {
-                    if (global::Libs.LDAP.Core.Utils.Any<global::Libs.LDAP.Core.LdapAttribute>(requestPacket.ChildAttributes, o => { return o.LdapOperation == global::Libs.LDAP.Core.LdapOperation.BindRequest; })) { isBound = this.HandleBindRequest(stream, requestPacket, out IsAdmin); }
-                    if (isBound && global::Libs.LDAP.Core.Utils.Any<global::Libs.LDAP.Core.LdapAttribute>(requestPacket.ChildAttributes, o => { return o.LdapOperation == global::Libs.LDAP.Core.LdapOperation.SearchRequest; }))
+                    if (LCore.Utils.Any<LCore.LdapAttribute>(requestPacket.ChildAttributes, o => { return o.LdapOperation == LCore.LdapOperation.BindRequest; })) { isBound = this.HandleBindRequest(stream, requestPacket, out IsAdmin); }
+                    if (isBound && LCore.Utils.Any<LCore.LdapAttribute>(requestPacket.ChildAttributes, o => { return o.LdapOperation == LCore.LdapOperation.SearchRequest; }))
                     {
                         nonSearch = false;
                         this.HandleSearchRequest(stream, requestPacket, IsAdmin);
@@ -724,8 +726,8 @@ namespace Libs.LDAP
                 }
                 if (nonSearch && (!isBound) && (requestPacket != null))
                 {
-                    global::Libs.LDAP.Core.LdapPacket responsePacket = new global::Libs.LDAP.Core.LdapPacket(requestPacket.MessageId);
-                    responsePacket.ChildAttributes.Add(new global::Libs.LDAP.Core.LdapResultAttribute(global::Libs.LDAP.Core.LdapOperation.CompareResponse, global::Libs.LDAP.Core.LdapResult.compareFalse));
+                    LCore.LdapPacket responsePacket = new LCore.LdapPacket(requestPacket.MessageId);
+                    responsePacket.ChildAttributes.Add(new LCore.LdapResultAttribute(LCore.LdapOperation.CompareResponse, LCore.LdapResult.compareFalse));
                     byte[] responseBytes = responsePacket.GetBytes();
                     stream.Write(responseBytes, 0, responseBytes.Length);
                 }
@@ -738,25 +740,25 @@ namespace Libs.LDAP
             if (args != null) { Mode = args[0].ToCharArray()[0]; }
             else
             {
-                global::System.Console.WriteLine("Set Server [Y] or Client [N]. Set server first!");
-                Mode = global::System.Console.ReadKey().KeyChar;
+                Sys.Console.WriteLine("Set Server [Y] or Client [N]. Set server first!");
+                Mode = Sys.Console.ReadKey().KeyChar;
             }
             switch (Mode)
             {
                 case 'y':
                 case 'Y':
-                    global::Libs.LDAP.Server s = new global::Libs.LDAP.Server(new global::Libs.LDAP.TestSource(), "127.0.0.1");
+                    LDap.Server s = new LDap.Server(new LDap.TestSource(), "127.0.0.1");
                     s.Start();
                     break;
                 default:
 #if CLIENT
-                    global::Libs.LDAP.Root r = new global::Libs.LDAP.Root(global::Libs.LDAP.Root.GetRoot("user1", "1234", "127.0.0.1/cn=Users,dc=dev,dc=company,dc=com", QueryUser: false));
-                    global::System.DirectoryServices.DirectoryEntry[] ms = global::Libs.LDAP.Root.GetChildren(r, FullTree: false, Filter: "(objectClass=posixAccount)");
-                    global::System.Console.WriteLine(ms == null ? "0" : ms.Length.ToString());
+                    LDap.Root r = new LDap.Root(LDap.Root.GetRoot("user1", "1234", "127.0.0.1/cn=Users,dc=dev,dc=company,dc=com", QueryUser: false));
+                    Sys.DirectoryServices.DirectoryEntry[] ms = LDap.Root.GetChildren(r, FullTree: false, Filter: "(objectClass=posixAccount)");
+                    Sys.Console.WriteLine(ms == null ? "0" : ms.Length.ToString());
 #endif
                     break;
             }
-            global::System.Console.ReadKey();
+            Sys.Console.ReadKey();
             return 0;
         }
 
@@ -766,9 +768,9 @@ namespace Libs.LDAP
         internal static int Main(string[] args) { return Process(new string[] { "y" }); }
 #endif
 
-        protected Server(global::System.Net.IPEndPoint localEndpoint) { this._server = new global::System.Net.Sockets.TcpListener(localEndpoint); }
-        public Server(global::Libs.LDAP.IDataSource Validator, global::System.Net.IPEndPoint localEndpoint) : this(localEndpoint) { this._validator = Validator; }
-        public Server(global::Libs.LDAP.IDataSource Validator, string localEndpoint, int Port) : this(new global::System.Net.IPEndPoint(global::System.Net.IPAddress.Parse(localEndpoint), Port)) { this._validator = Validator; }
-        public Server(global::Libs.LDAP.IDataSource Validator, string localEndpoint) : this(Validator, localEndpoint, global::Libs.LDAP.Server.StandardPort) { /* NOTHING */ }
+        protected Server(Sys.Net.IPEndPoint localEndpoint) { this._server = new SysSock.TcpListener(localEndpoint); }
+        public Server(LDap.IDataSource Validator, Sys.Net.IPEndPoint localEndpoint) : this(localEndpoint) { this._validator = Validator; }
+        public Server(LDap.IDataSource Validator, string localEndpoint, int Port) : this(new Sys.Net.IPEndPoint(Sys.Net.IPAddress.Parse(localEndpoint), Port)) { this._validator = Validator; }
+        public Server(LDap.IDataSource Validator, string localEndpoint) : this(Validator, localEndpoint, LDap.Server.StandardPort) { /* NOTHING */ }
     }
 }
