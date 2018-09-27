@@ -24,7 +24,7 @@
     <UseVSHostingProcess>false</UseVSHostingProcess>
     <BaseIntermediateOutputPath>bin\temp\LDAP\</BaseIntermediateOutputPath>
   </PropertyGroup>
-  <PropertyGroup><StartupObject>Libs.LDAP.Server</StartupObject></PropertyGroup>
+  <PropertyGroup><StartupObject>Libs.LDAP.TestSource</StartupObject></PropertyGroup>
   <ItemGroup><Compile Include="LDAPServer.cs" /></ItemGroup>
   <ItemGroup><Reference Include="System" /></ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
