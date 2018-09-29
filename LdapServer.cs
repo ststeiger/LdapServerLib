@@ -49,12 +49,8 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
                 else
                 {
                     byte[] intbytes = Sys.BitConverter.GetBytes(length);
+                    Sys.Array.Reverse(intbytes);
                     byte intbyteslength = (byte)intbytes.Length;
-                    while (intbyteslength >= 0)
-                    {
-                        intbyteslength--;
-                        if (intbytes[intbyteslength - 1] != 0) { break; }
-                    }
                     int lengthByte = intbyteslength + 128;
                     byte[] berBytes = new byte[1 + intbyteslength];
                     berBytes[0] = (byte)lengthByte;
