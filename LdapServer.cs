@@ -468,6 +468,26 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
         }
     }
 
+    public struct SearchKey
+    {
+        public string Key { get; set; }
+        public string[] Values { get; set; }
+
+        public SearchKey(string Key, string[] Values) : this()
+        {
+            this.Key = Key;
+            this.Values = Values;
+        }
+
+        public SearchKey(string Key, string Value) : this(Key, new string[] { Value }) { /* NOTHING */ }
+    }
+
+    internal class SearchCondition
+    {
+        public LCore.LdapFilterChoice Filter = LCore.LdapFilterChoice.or;
+        public SysClG.List<LDap.SearchKey> Keys = new SysClG.List<LDap.SearchKey>(30);
+    }
+
     public interface IUserData
     {
         string UserName { get; }
@@ -603,6 +623,7 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
 
     public class Server //https://github.com/vforteli/Flexinets.Ldap.Server/blob/master/LdapServer.cs 
     {
+        private const int SimplePackCount = 7;
         public const int StandardPort = 389;
         public const string PosixAccount = "PosixAccount";
         public const string AMAccount = "sAMAccountName";
@@ -611,6 +632,7 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
         public LDap.IDataSource Validator { get { return this._validator; } }
         private bool IsValidType(string type) { return (type == "objectClass" || type == LDap.Server.PosixAccount || type == LDap.Server.AMAccount); }
         public void Stop() { if (this._server != null) { this._server.Stop(); } }
+        private LDap.SearchKey GetCompare(LDap.SearchKey[] pack, LDap.SearchKey key) { foreach (LDap.SearchKey val in pack) { if (val.Key == key.Key) { return val; } } return default(LDap.SearchKey); }
 
         public void Start()
         {
@@ -631,44 +653,50 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
             }
         }
 
-        //'... WOKRS! BEAUTIFUL! On Outlook, not in Thunderbird....
-        private LCore.LdapPacket RespondUserData(LDap.IUserData user, int MessageID, bool Simple)
+        private LDap.SearchKey[] UserPack(LDap.IUserData user, bool Simple)
+        {
+            LDap.SearchKey[] pk = new LDap.SearchKey[Simple ? LDap.Server.SimplePackCount : 22];
+            pk[0] = new LDap.SearchKey("cn", user.UserName);
+            pk[1] = new LDap.SearchKey("commonName", user.UserName);
+            pk[2] = new LDap.SearchKey("mail", user.EMail);
+            pk[3] = new LDap.SearchKey("displayname", user.FullName);
+            pk[4] = new LDap.SearchKey("display-name", user.FullName);
+            pk[5] = new LDap.SearchKey("company", this._validator.Company.Name);
+            pk[6] = new LDap.SearchKey("objectClass", new string[] { LDap.Server.AMAccount, LDap.Server.PosixAccount });
+            if (!Simple)
+            {
+                pk[7] = new LDap.SearchKey("sn", user.LastName);
+                pk[8] = new LDap.SearchKey("surname", user.LastName);
+                pk[9] = new LDap.SearchKey("co", this._validator.Company.Country);
+                pk[10] = new LDap.SearchKey("organizationName", this._validator.Company.Name);
+                pk[11] = new LDap.SearchKey("givenName", user.FirstName);
+                pk[12] = new LDap.SearchKey("mailNickname", user.FullName);
+                pk[13] = new LDap.SearchKey("title", user.Job);
+                pk[14] = new LDap.SearchKey("telephoneNumber", this._validator.Company.Phone);
+                pk[15] = new LDap.SearchKey("initials", ((!string.IsNullOrEmpty(user.FirstName) && !string.IsNullOrEmpty(user.LastName)) ? new string[] { (user.FirstName.Substring(0, 1) + user.LastName.Substring(0, 1)) } : (null as string[])));
+                pk[16] = new LDap.SearchKey("postalAddress", this._validator.Company.Address);
+                pk[17] = new LDap.SearchKey("l", this._validator.Company.City);
+                pk[18] = new LDap.SearchKey("st", this._validator.Company.State);
+                pk[19] = new LDap.SearchKey("postalCode", this._validator.Company.PostCode);
+                pk[20] = new LDap.SearchKey("ou", user.Department);
+                pk[21] = new LDap.SearchKey("department", user.Department);
+                //--- this.AddAttribute(partialAttributeList, "uid", "r1"); //unused
+                //--- this.AddAttribute(partialAttributeList, "o", "r2"); //unused
+                //--- this.AddAttribute(partialAttributeList, "legacyExcangeDN", "r3"); //i have no need (don't know whats for)
+                //--- this.AddAttribute(partialAttributeList, "physicalDeliveryOfficeName", "r4"); //i have no need
+                //--- this.AddAttribute(partialAttributeList, "secretary", "r5"); //i have no need
+                //--- this.AddAttribute(partialAttributeList, "roleOccupant", "r6"); //unused
+                //--- this.AddAttribute(partialAttributeList, "organizationUnitName", "r7"); //unused
+            }
+            return pk;
+        }
+
+        private LCore.LdapPacket RespondUserData(LDap.IUserData user, LDap.SearchKey[] pack, int MessageID)
         {
             LCore.LdapAttribute searchResultEntry = new LCore.LdapAttribute(LCore.LdapOperation.SearchResultEntry);
             searchResultEntry.ChildAttributes.Add(new LCore.LdapAttribute(LCore.UniversalDataType.OctetString, ("cn=" + user.UserName + "," + this._validator.LDAPRoot)));
             LCore.LdapAttribute partialAttributeList = new LCore.LdapAttribute(LCore.UniversalDataType.Sequence);
-            this.AddAttribute(partialAttributeList, "cn", user.UserName);
-            this.AddAttribute(partialAttributeList, "commonName", user.UserName);
-            this.AddAttribute(partialAttributeList, "mail", user.EMail);
-            this.AddAttribute(partialAttributeList, "display-name", user.FullName);
-            this.AddAttribute(partialAttributeList, "displayname", user.FullName);
-            this.AddAttribute(partialAttributeList, "company", this._validator.Company.Name);
-            this.AddAttribute(partialAttributeList, "objectClass", LDap.Server.AMAccount, LDap.Server.PosixAccount);
-            if (!Simple)
-            {
-                this.AddAttribute(partialAttributeList, "sn", user.LastName);
-                this.AddAttribute(partialAttributeList, "surname", user.LastName);
-                this.AddAttribute(partialAttributeList, "co", this._validator.Company.Country);
-                this.AddAttribute(partialAttributeList, "organizationName", this._validator.Company.Name);
-                this.AddAttribute(partialAttributeList, "givenName", user.FirstName);
-                this.AddAttribute(partialAttributeList, "mailNickname", user.FullName);
-                this.AddAttribute(partialAttributeList, "title", user.Job);
-                this.AddAttribute(partialAttributeList, "telephoneNumber", this._validator.Company.Phone);
-                if (!string.IsNullOrEmpty(user.FirstName) && !string.IsNullOrEmpty(user.LastName)) { this.AddAttribute(partialAttributeList, "initials", (user.FirstName.Substring(0, 1) + user.LastName.Substring(0, 1))); }
-                this.AddAttribute(partialAttributeList, "postalAddress", this._validator.Company.Address);
-                this.AddAttribute(partialAttributeList, "l", this._validator.Company.City);
-                this.AddAttribute(partialAttributeList, "st", this._validator.Company.State);
-                this.AddAttribute(partialAttributeList, "postalCode", this._validator.Company.PostCode);
-                this.AddAttribute(partialAttributeList, "ou", user.Department);
-                this.AddAttribute(partialAttributeList, "department", user.Department);
-                //this.AddAttribute(partialAttributeList, "uid", "?"); //unused
-                //--- this.AddAttribute(partialAttributeList, "o", "?"); //unused
-                //--- this.AddAttribute(partialAttributeList, "legacyExcangeDN", "?"); //i have no need (don't know whats for)
-                //--- this.AddAttribute(partialAttributeList, "physicalDeliveryOfficeName", "?"); //i have no need
-                //--- this.AddAttribute(partialAttributeList, "secretary", "?"); //i have no need
-                //--- this.AddAttribute(partialAttributeList, "roleOccupant", "?"); //unused
-                //--- this.AddAttribute(partialAttributeList, "organizationUnitName", "?"); //unused
-            }
+            foreach (LDap.SearchKey pkItem in pack) { this.AddAttribute(partialAttributeList, pkItem.Key, pkItem.Values); }
             searchResultEntry.ChildAttributes.Add(partialAttributeList);
             LCore.LdapPacket response = new LCore.LdapPacket(MessageID);
             response.ChildAttributes.Add(searchResultEntry);
@@ -684,7 +712,7 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
             {
                 if (Limit > 0)
                 {
-                    using (LCore.LdapPacket pkO = this.RespondUserData(user, MessageID, true)) { this.WriteAttributes(pkO, stream); }
+                    using (LCore.LdapPacket pkO = this.RespondUserData(user, this.UserPack(user, true), MessageID)) { this.WriteAttributes(pkO, stream); }
                     Limit--;
                 } else { break; }
             }
@@ -695,7 +723,7 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
             if (!string.IsNullOrEmpty(UserName))
             {
                 UserName = UserName.ToLower();
-                foreach (LDap.IUserData user in this._validator.ListUsers()) { if (user.UserName == UserName) { using (LCore.LdapPacket pkO = this.RespondUserData(user, MessageID, false)) { this.WriteAttributes(pkO, stream); } break; } }
+                foreach (LDap.IUserData user in this._validator.ListUsers()) { if (user.UserName == UserName) { using (LCore.LdapPacket pkO = this.RespondUserData(user, this.UserPack(user, false), MessageID)) { this.WriteAttributes(pkO, stream); } break; } }
             }
         }
 
@@ -720,6 +748,85 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
             return arg;
         }
 
+        private LDap.SearchCondition GetSearchOptions(LCore.LdapAttribute filter)
+        {
+            LDap.SearchKey cur = new LDap.SearchKey("*", filter.GetValue<string>());
+            LDap.SearchCondition args = new LDap.SearchCondition();
+            try
+            {
+                args.Filter = (LCore.LdapFilterChoice)filter.ContextType;
+                if (string.IsNullOrEmpty(cur.Values[0]))
+                {
+                    if (filter.ChildAttributes.Count == 1) { filter = filter.ChildAttributes[0]; }
+                    if (filter.ChildAttributes.Count > 0)
+                    {
+                        args.Filter = (LCore.LdapFilterChoice)filter.ContextType;
+                        string[] nARG = null;
+                        LCore.LdapAttribute varg = null;
+                        foreach (LCore.LdapAttribute arg in filter.ChildAttributes)
+                        {
+                            if (arg.ChildAttributes.Count == 2 && arg.ChildAttributes[0].DataType == LCore.UniversalDataType.OctetString)
+                            {
+                                cur = new LDap.SearchKey(arg.ChildAttributes[0].GetValue<string>(), (null as string[]));
+                                varg = arg.ChildAttributes[1];
+                                if (varg.DataType == LCore.UniversalDataType.OctetString) { cur.Values = new string[] { varg.GetValue<string>() }; }
+                                else
+                                {
+                                    nARG = new string[varg.ChildAttributes.Count];
+                                    for (int i = 0; i < varg.ChildAttributes.Count; i++) { nARG[i] = varg.ChildAttributes[i].GetValue<string>(); }
+                                    cur.Values = nARG;
+                                    nARG = null;
+                                }
+                                if (!string.IsNullOrEmpty(cur.Key)) { args.Keys.Add(cur); }
+                            }
+                        }
+                    }
+                } else { args.Keys.Add(cur); }
+            } catch { args.Keys.Clear(); }
+            return args;
+        }
+
+        private void ReturnUsers(SysSock.NetworkStream stream, int MessageID, int Limit, LDap.SearchCondition args)
+        {
+            LDap.SearchKey[] pack = null;
+            bool Matched = false;
+            //'... LDap.SearchKey compare = default(LDap.SearchKey);
+            foreach (LDap.IUserData user in this._validator.ListUsers())
+            {
+                Matched = false;
+                if (Limit > 0)
+                {
+                    pack = this.UserPack(user, false);
+                    switch (args.Filter)
+                    {
+                        case LCore.LdapFilterChoice.or:
+                            foreach (LDap.SearchKey key in args.Keys)
+                            {
+                                //'... if any (TODO : URGENT)
+                                Matched = true;
+                            }
+                            break;
+                        case LCore.LdapFilterChoice.and:
+                            if (args.Keys.Count == pack.Length) //Since all must match anyway
+                            {
+                                foreach (LDap.SearchKey key in args.Keys)
+                                {
+                                    //'... if all (TODO : URGENT)
+                                    Matched = true;
+                                }
+                            }
+                            break;
+                    }
+                    if (Matched)
+                    {
+                        Sys.Array.Resize<LDap.SearchKey>(ref pack, LDap.Server.SimplePackCount);
+                        using (LCore.LdapPacket pkO = this.RespondUserData(user, pack, MessageID)) { this.WriteAttributes(pkO, stream); }
+                        Limit--;
+                    }
+                } else { break; }
+            }
+        }
+
         //'... make better handling of the filters!
         //see this as well: https://tools.ietf.org/html/rfc4511#section-4.5.1
         private void HandleSearchRequest(SysSock.NetworkStream stream, LCore.LdapPacket requestPacket, bool IsAdmin)
@@ -741,10 +848,16 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
                         arg = this.ExtractUser(arg);
                         switch (filterMode)
                         {
-                            case LCore.LdapFilterChoice.equalityMatch: this.ReturnSingleUser(stream, requestPacket.MessageId, arg); break;
-                            case LCore.LdapFilterChoice.and:
-                            case LCore.LdapFilterChoice.or: if (string.IsNullOrEmpty(arg) || this.IsValidType(arg)) { this.ReturnAllUsers(stream, requestPacket.MessageId, limit); } else { this.ReturnSingleUser(stream, requestPacket.MessageId, arg); } break;
+                            case LCore.LdapFilterChoice.equalityMatch:
                             case LCore.LdapFilterChoice.present: this.ReturnSingleUser(stream, requestPacket.MessageId, arg); break;
+                            case LCore.LdapFilterChoice.and:
+                            case LCore.LdapFilterChoice.or:
+                                if (string.IsNullOrEmpty(arg) || this.IsValidType(arg))
+                                {
+                                    LDap.SearchCondition args = this.GetSearchOptions(filter);
+                                    if (args.Keys.Count == 0 || args.Keys[0].Key == "*") { this.ReturnAllUsers(stream, requestPacket.MessageId, limit); } else { this.ReturnUsers(stream, requestPacket.MessageId, limit, args); }
+                                } else { this.ReturnSingleUser(stream, requestPacket.MessageId, arg); }
+                                break;
                         }
                     }
                     else
