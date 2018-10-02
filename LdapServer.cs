@@ -518,6 +518,7 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
         string EMail { get; }
         string Department { get; }
         string Job { get; }
+        string Mobile { get; }
         bool TestPassword(string Password);
     }
 
@@ -551,6 +552,7 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
         public string EMail { get; set; }
         public string Department { get; set; }
         public string Job { get; set; }
+        public string Mobile { get; set; }
         public virtual bool TestPassword(string Password) { /* //'... here! */ return true; }
 
         public UserData(string UserName, string EMail, string FirstName, string LastName)
@@ -576,6 +578,7 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
         public string Address { get; set; }
     }
 
+    //See also http://tldp.org/HOWTO/archived/LDAP-Implementation-HOWTO/schemas.html
     internal class TestSource : LDap.IDataSource //testing purposes only
     {
         public LDap.ICompany Company { get; protected set; }
@@ -585,7 +588,7 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
 
         public SysClG.IEnumerable<LDap.IUserData> ListUsers()
         {
-            yield return new LDap.UserData("ainz.ooal.gown", "ainzsama@nazarick.com", "Ainz", "Ooal Gown") { Department = "Nazarick Mausoleum", Job = "Overlord" };
+            yield return new LDap.UserData("ainz.ooal.gown", "ainzsama@nazarick.com", "Ainz", "Ooal Gown") { Department = "Nazarick Mausoleum", Job = "Overlord", Mobile = "+9900900000099" };
             yield return new LDap.UserData("shalltear.bff", "shalltear@nazarick.com", "Shalltear", "Bloodfallen") { Department = "Base Floors", Job = "Guardian" };
             yield return new LDap.UserData("narberal", "narberal@nazarick.com", "Narberal", "Gamma") { Department = "Floor 10", Job = "Pleiade" };
         }
@@ -659,7 +662,7 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
         {
             LDap.SearchKey comp = this.GetCompare(pack, key);
             if (string.IsNullOrEmpty(comp.Key)) { return -1; }
-            else if (key.Values.Length == 1 && key.Values[0] == "*") { return 2; }
+            else if (key.Values == null || key.Values.Length == 0 || (key.Values.Length == 1 && key.Values[0] == "*")) { return 2; }
             else
             {
                 int m = 0;
@@ -690,7 +693,7 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
 
         private LDap.SearchKey[] UserPack(LDap.IUserData user, bool Simple)
         {
-            LDap.SearchKey[] pk = new LDap.SearchKey[Simple ? LDap.Server.SimplePackCount : 22];
+            LDap.SearchKey[] pk = new LDap.SearchKey[Simple ? LDap.Server.SimplePackCount : 23];
             pk[0] = new LDap.SearchKey("cn", user.UserName);
             pk[1] = new LDap.SearchKey("commonName", user.UserName);
             pk[2] = new LDap.SearchKey("mail", user.EMail);
@@ -715,6 +718,7 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
                 pk[19] = new LDap.SearchKey("postalCode", this._validator.Company.PostCode);
                 pk[20] = new LDap.SearchKey("ou", user.Department);
                 pk[21] = new LDap.SearchKey("department", user.Department);
+                pk[22] = new LDap.SearchKey("mobile", user.Mobile);
                 //--- this.AddAttribute(partialAttributeList, "uid", "r1"); //unused
                 //--- this.AddAttribute(partialAttributeList, "o", "r2"); //unused
                 //--- this.AddAttribute(partialAttributeList, "legacyExcangeDN", "r3"); //i have no need (don't know whats for)
