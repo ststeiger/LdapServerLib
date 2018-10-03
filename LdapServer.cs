@@ -124,6 +124,7 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
 
             public static int BerLengthToInt(byte[] bytes, int offset, out int berByteCount)
             {
+#if PREV1
                 berByteCount = 1;
                 int attributeLength = 0;
                 if (bytes[offset] >> 7 == 1)
@@ -133,6 +134,19 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
                     berByteCount += lengthoflengthbytes;
                 } else { attributeLength = bytes[offset] & 127; }
                 return attributeLength;
+#else
+                berByteCount = 1;
+                int attributeLength = 0;
+                if (bytes[offset] >> 7 == 1)
+                {
+                    int lengthoflengthbytes = bytes[offset] & 127;
+                    byte[] temp = LCore.Utils.Reverse<byte>(new LCore.Utils.ArraySegmentEnumerator<byte>(bytes, offset + 1, lengthoflengthbytes));
+                    Sys.Array.Resize(ref temp, 4);
+                    attributeLength = Sys.BitConverter.ToInt32(temp, 0);
+                    berByteCount += lengthoflengthbytes;
+                } else { attributeLength = bytes[offset] & 127; }
+                return attributeLength;
+#endif
             }
 
             public static int BerLengthToInt(Sys.IO.Stream stream, out int berByteCount)
@@ -421,8 +435,8 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
             public LdapResultAttribute(LCore.LdapOperation operation, LCore.LdapResult result, string matchedDN = "", string diagnosticMessage = "") : base(operation)
             {
                 this.ChildAttributes.Add(new LCore.LdapAttribute(LCore.UniversalDataType.Enumerated, (byte)result));
-                this.ChildAttributes.Add(new LCore.LdapAttribute(LCore.UniversalDataType.OctetString, matchedDN));
-                this.ChildAttributes.Add(new LCore.LdapAttribute(LCore.UniversalDataType.OctetString, diagnosticMessage));
+                this.ChildAttributes.Add(string.IsNullOrEmpty(matchedDN) ? new LCore.LdapAttribute(LCore.UniversalDataType.OctetString, false) : new LCore.LdapAttribute(LCore.UniversalDataType.OctetString, matchedDN));
+                this.ChildAttributes.Add(string.IsNullOrEmpty(diagnosticMessage) ? new LCore.LdapAttribute(LCore.UniversalDataType.OctetString, false) : new LCore.LdapAttribute(LCore.UniversalDataType.OctetString, diagnosticMessage));
             }
         }
 
