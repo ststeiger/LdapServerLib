@@ -17,7 +17,7 @@
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\</OutputPath>
-    <DefineConstants>LDAP;</DefineConstants>
+    <DefineConstants>LDAP;NO_LOGIT;</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
@@ -25,7 +25,8 @@
     <BaseIntermediateOutputPath>bin\temp\LDAP\</BaseIntermediateOutputPath>
   </PropertyGroup>
   <PropertyGroup><StartupObject>Libs.LDAP.TestSource</StartupObject></PropertyGroup>
-  <ItemGroup><Compile Include="LDAPServer.cs" /></ItemGroup>
+  <ItemGroup><Compile Include="LdapServer.cs" /></ItemGroup>
+  <ItemGroup><Folder Include="Properties\" /></ItemGroup>
   <ItemGroup><Reference Include="System" /></ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
