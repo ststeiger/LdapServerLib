@@ -8,13 +8,13 @@ using LDap = global::Libs.LDAP;
 using LCore = global::Libs.LDAP.Core;
 namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.outlook.html
 {
-    namespace Core //https://github.com/vforteli/Flexinets.Ldap.Core
+    namespace Core //https://github.com/vforteli/Flexinets.Ldap.Core https://tools.ietf.org/html/rfc4511
     {
         internal delegate bool Verify<T>(T obj);
 
         internal static class Utils
         {
-            public static byte[] StringToByteArray(string hex, bool trimWhitespace = true)
+            internal static byte[] StringToByteArray(string hex, bool trimWhitespace = true)
             {
                 if (trimWhitespace) { hex = hex.Replace(" ", ""); }
                 int NumberChars = hex.Length;
@@ -23,14 +23,14 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
                 return bytes;
             }
 
-            public static string ByteArrayToString(byte[] bytes)
+            internal static string ByteArrayToString(byte[] bytes)
             {
                 SysTxt.StringBuilder hex = new SysTxt.StringBuilder(bytes.Length * 2);
                 foreach (byte b in bytes) { hex.Append(b.ToString("X2")); }
                 return hex.ToString();
             }
 
-            public static string BitsToString(SysCll.BitArray bits)
+            internal static string BitsToString(SysCll.BitArray bits)
             {
                 int i = 1;
                 string derp = string.Empty;
@@ -43,7 +43,7 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
                 return derp.Trim();
             }
 
-            public static byte[] IntToBerLength(int length) //https://en.wikipedia.org/wiki/X.690#BER_encoding
+            internal static byte[] IntToBerLength(int length) //https://en.wikipedia.org/wiki/X.690#BER_encoding
             {
                 if (length <= 127) { return new byte[] { (byte)length }; }
                 else
@@ -74,7 +74,7 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
                 }
             }
 
-            public static TObject[] Reverse<TObject>(SysClG.IEnumerable<TObject> enumerable)
+            internal static TObject[] Reverse<TObject>(SysClG.IEnumerable<TObject> enumerable)
             {
                 SysClG.List<TObject> acum = new SysClG.List<TObject>(10);
                 foreach (TObject obj in enumerable)
@@ -86,8 +86,8 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
                 return acum.ToArray();
             }
 
-            public static bool Any<T>(SysClG.IEnumerable<T> enumerator, LCore.Verify<T> verifier) { foreach (T obj in enumerator) { if (verifier(obj)) { return true; } } return false; }
-            public static T SingleOrDefault<T>(SysClG.IEnumerable<T> enumerator, LCore.Verify<T> verifier) { foreach (T obj in enumerator) { if (verifier(obj)) { return obj; } } return default(T); }
+            internal static bool Any<T>(SysClG.IEnumerable<T> enumerator, LCore.Verify<T> verifier) { foreach (T obj in enumerator) { if (verifier(obj)) { return true; } } return false; }
+            internal static T SingleOrDefault<T>(SysClG.IEnumerable<T> enumerator, LCore.Verify<T> verifier) { foreach (T obj in enumerator) { if (verifier(obj)) { return obj; } } return default(T); }
 
             private sealed class ArraySegmentEnumerator<T> : SysClG.IEnumerator<T>, SysClG.IEnumerable<T> //https://referencesource.microsoft.com/#mscorlib/system/arraysegment.cs,9b6becbc5eb6a533
             {
@@ -122,9 +122,9 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
                 }
             }
 
-            public static int BerLengthToInt(byte[] bytes, int offset, out int berByteCount)
+            internal static int BerLengthToInt(byte[] bytes, int offset, out int berByteCount)
             {
-#if PREV1
+#if PREV
                 berByteCount = 1;
                 int attributeLength = 0;
                 if (bytes[offset] >> 7 == 1)
@@ -141,7 +141,7 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
                 {
                     int lengthoflengthbytes = bytes[offset] & 127;
                     byte[] temp = LCore.Utils.Reverse<byte>(new LCore.Utils.ArraySegmentEnumerator<byte>(bytes, offset + 1, lengthoflengthbytes));
-                    Sys.Array.Resize(ref temp, 4);
+                    Sys.Array.Resize<byte>(ref temp, 4);
                     attributeLength = Sys.BitConverter.ToInt32(temp, 0);
                     berByteCount += lengthoflengthbytes;
                 } else { attributeLength = bytes[offset] & 127; }
@@ -149,8 +149,9 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
 #endif
             }
 
-            public static int BerLengthToInt(Sys.IO.Stream stream, out int berByteCount)
+            internal static int BerLengthToInt(Sys.IO.Stream stream, out int berByteCount)
             {
+#if PREV
                 berByteCount = 1;
                 int attributeLength = 0;
                 byte[] berByte = new byte[1];
@@ -164,9 +165,26 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
                     berByteCount += lengthoflengthbytes;
                 } else { attributeLength = berByte[0] & 127; }
                 return attributeLength;
+#else
+                berByteCount = 1;
+                int attributeLength = 0;
+                byte[] berByte = new byte[1];
+                stream.Read(berByte, 0, 1);
+                if (berByte[0] >> 7 == 1)
+                {
+                    int lengthoflengthbytes = berByte[0] & 127;
+                    byte[] lengthBytes = new byte[lengthoflengthbytes];
+                    stream.Read(lengthBytes, 0, lengthoflengthbytes);
+                    byte[] temp = LCore.Utils.Reverse<byte>(lengthBytes);
+                    Sys.Array.Resize<byte>(ref temp, 4);
+                    attributeLength = Sys.BitConverter.ToInt32(temp, 0);
+                    berByteCount += lengthoflengthbytes;
+                } else { attributeLength = berByte[0] & 127; }
+                return attributeLength;
+#endif
             }
 
-            public static string Repeat(string stuff, int n)
+            internal static string Repeat(string stuff, int n)
             {
                 SysTxt.StringBuilder concat = new SysTxt.StringBuilder(stuff.Length * n);
                 for (int i = 0; i < n; i++) { concat.Append(stuff); }
@@ -214,7 +232,7 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
             NONE = 255 //SAMMUEL
         }
 
-        public enum LdapResult : byte //https://tools.ietf.org/html/rfc4511
+        public enum LdapResult : byte
         {
             success = 0,
             operationError = 1,
@@ -265,7 +283,7 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
             Private = 3
         }
 
-        public enum UniversalDataType : byte //Universal data types from https://en.wikipedia.org/wiki/X.690#BER_encoding
+        public enum UniversalDataType : byte
         {
             EndOfContent = 0,
             Boolean = 1,
@@ -671,6 +689,8 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
         private bool IsValidType(string type) { return (type == "objectClass" || type == LDap.Server.PosixAccount || type == LDap.Server.AMAccount); }
         public void Stop() { if (this._server != null) { this._server.Stop(); } }
         private LDap.SearchKey GetCompare(LDap.SearchKey[] pack, LDap.SearchKey key) { foreach (LDap.SearchKey val in pack) { if (val.Key == key.Key) { return val; } } return default(LDap.SearchKey); }
+        private bool IsBind(LCore.LdapAttribute attr) { return (attr.LdapOperation == LCore.LdapOperation.BindRequest); }
+        private bool IsSearch(LCore.LdapAttribute attr) { return (attr.LdapOperation == LCore.LdapOperation.SearchRequest); }
 
         private int Matched(LDap.SearchKey[] pack, LDap.SearchKey key)
         {
@@ -894,8 +914,6 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
             }
         }
 
-        //'... make better handling of the filters!
-        //see this as well: https://tools.ietf.org/html/rfc4511#section-4.5.1
         private void HandleSearchRequest(SysSock.NetworkStream stream, LCore.LdapPacket requestPacket, bool IsAdmin)
         {
             LCore.LdapAttribute searchRequest = LCore.Utils.SingleOrDefault<LCore.LdapAttribute>(requestPacket.ChildAttributes, o => { return o.LdapOperation == LCore.LdapOperation.SearchRequest; });
@@ -940,7 +958,6 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
                         }
                     }
                 } catch { /* NOTHING */ }
-                //'... should it be done as here? https://github.com/5118234/FlexinetsLdap/blob/master/LdapServer.cs#L135
                 responsePacket.ChildAttributes.Add(new LCore.LdapResultAttribute(LCore.LdapOperation.SearchResultDone, LCore.LdapResult.success));
             }
             this.WriteAttributes(responsePacket, stream);
@@ -976,8 +993,8 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
                 LCore.LdapPacket requestPacket = null;
                 while (LCore.LdapPacket.TryParsePacket(stream, out requestPacket))
                 {
-                    if (LCore.Utils.Any<LCore.LdapAttribute>(requestPacket.ChildAttributes, o => { return o.LdapOperation == LCore.LdapOperation.BindRequest; })) { isBound = this.HandleBindRequest(stream, requestPacket, out IsAdmin); }
-                    if (isBound && LCore.Utils.Any<LCore.LdapAttribute>(requestPacket.ChildAttributes, o => { return o.LdapOperation == LCore.LdapOperation.SearchRequest; }))
+                    if (LCore.Utils.Any<LCore.LdapAttribute>(requestPacket.ChildAttributes, this.IsBind)) { isBound = this.HandleBindRequest(stream, requestPacket, out IsAdmin); }
+                    if (isBound && LCore.Utils.Any<LCore.LdapAttribute>(requestPacket.ChildAttributes, this.IsSearch))
                     {
                         nonSearch = false;
                         this.HandleSearchRequest(stream, requestPacket, IsAdmin);
