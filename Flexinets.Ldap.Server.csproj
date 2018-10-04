@@ -17,16 +17,24 @@
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\</OutputPath>
-    <DefineConstants>LDAP;NO_LOGIT;</DefineConstants>
+    <DefineConstants>LDAP;TESTING;</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <UseVSHostingProcess>false</UseVSHostingProcess>
     <BaseIntermediateOutputPath>bin\temp\LDAP\</BaseIntermediateOutputPath>
   </PropertyGroup>
-  <PropertyGroup><StartupObject>Libs.LDAP.TestSource</StartupObject></PropertyGroup>
-  <ItemGroup><Compile Include="LdapServer.cs" /></ItemGroup>
-  <ItemGroup><Folder Include="Properties\" /></ItemGroup>
-  <ItemGroup><Reference Include="System" /></ItemGroup>
+  <PropertyGroup>
+    <StartupObject>Libs.LDAP.TestSource</StartupObject>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Namespace.LDAP.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Properties\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
