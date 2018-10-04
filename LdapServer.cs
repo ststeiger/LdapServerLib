@@ -8,7 +8,7 @@ using LDap = global::Libs.LDAP;
 using LCore = global::Libs.LDAP.Core;
 namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.outlook.html
 {
-    namespace Core //https://github.com/vforteli/Flexinets.Ldap.Core https://tools.ietf.org/html/rfc4511
+    namespace Core //https://github.com/vforteli/Flexinets.Ldap.Core | https://tools.ietf.org/html/rfc4511
     {
         internal delegate bool Verify<T>(T obj);
 
@@ -48,20 +48,6 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
                 if (length <= 127) { return new byte[] { (byte)length }; }
                 else
                 {
-#if PREV
-                    byte[] intbytes = Sys.BitConverter.GetBytes(length);
-                    byte intbyteslength = (byte)intbytes.Length;
-                    while (intbyteslength >= 0)
-                    {
-                        intbyteslength--;
-                        if (intbytes[intbyteslength - 1] != 0) { break; }
-                    }
-                    int lengthByte = intbyteslength + 128;
-                    byte[] berBytes = new byte[1 + intbyteslength];
-                    berBytes[0] = (byte)lengthByte;
-                    Sys.Buffer.BlockCopy(intbytes, 0, berBytes, 1, intbyteslength);
-                    return berBytes;
-#else
                     byte[] intbytes = Sys.BitConverter.GetBytes(length);
                     Sys.Array.Reverse(intbytes);
                     byte intbyteslength = (byte)intbytes.Length;
@@ -70,7 +56,6 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
                     berBytes[0] = (byte)lengthByte;
                     Sys.Buffer.BlockCopy(intbytes, 0, berBytes, 1, intbyteslength);
                     return berBytes;
-#endif
                 }
             }
 
@@ -124,17 +109,6 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
 
             internal static int BerLengthToInt(byte[] bytes, int offset, out int berByteCount)
             {
-#if PREV
-                berByteCount = 1;
-                int attributeLength = 0;
-                if (bytes[offset] >> 7 == 1)
-                {
-                    int lengthoflengthbytes = bytes[offset] & 127;
-                    attributeLength = Sys.BitConverter.ToInt32(LCore.Utils.Reverse<byte>(new LCore.Utils.ArraySegmentEnumerator<byte>(bytes, offset + 1, lengthoflengthbytes)), 0);
-                    berByteCount += lengthoflengthbytes;
-                } else { attributeLength = bytes[offset] & 127; }
-                return attributeLength;
-#else
                 berByteCount = 1;
                 int attributeLength = 0;
                 if (bytes[offset] >> 7 == 1)
@@ -146,26 +120,10 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
                     berByteCount += lengthoflengthbytes;
                 } else { attributeLength = bytes[offset] & 127; }
                 return attributeLength;
-#endif
             }
 
             internal static int BerLengthToInt(Sys.IO.Stream stream, out int berByteCount)
             {
-#if PREV
-                berByteCount = 1;
-                int attributeLength = 0;
-                byte[] berByte = new byte[1];
-                stream.Read(berByte, 0, 1);
-                if (berByte[0] >> 7 == 1)
-                {
-                    int lengthoflengthbytes = berByte[0] & 127;
-                    byte[] lengthBytes = new byte[lengthoflengthbytes];
-                    stream.Read(lengthBytes, 0, lengthoflengthbytes);
-                    attributeLength = Sys.BitConverter.ToInt32(LCore.Utils.Reverse<byte>(lengthBytes), 0);
-                    berByteCount += lengthoflengthbytes;
-                } else { attributeLength = berByte[0] & 127; }
-                return attributeLength;
-#else
                 berByteCount = 1;
                 int attributeLength = 0;
                 byte[] berByte = new byte[1];
@@ -181,7 +139,6 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
                     berByteCount += lengthoflengthbytes;
                 } else { attributeLength = berByte[0] & 127; }
                 return attributeLength;
-#endif
             }
 
             internal static string Repeat(string stuff, int n)
@@ -462,23 +419,8 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
         {
             public int MessageId { get { return this.ChildAttributes[0].GetValue<int>(); } }
 
-#if LOGIT
-            internal static void LogBytes(byte[] bytes, bool InOrOut)
-            {
-                try
-                {
-                    SysTxt.StringBuilder t = new SysTxt.StringBuilder(bytes.Length * 2);
-                    foreach (byte b in bytes) { t.Append(b.ToString("X2")); }
-                    Sys.IO.File.AppendAllText("D:\\ldap.txt", (Sys.Environment.NewLine + (InOrOut ? "<in>:" : "<ou>:") + t.ToString()));
-                } catch { /* NOTHING */ }
-            }
-#endif
-
             public static LCore.LdapPacket ParsePacket(byte[] bytes)
             {
-#if LOGIT
-                LCore.LdapPacket.LogBytes(bytes, true);
-#endif
                 LCore.LdapPacket packet = new LCore.LdapPacket(LCore.Tag.Parse(bytes[0]));
                 int lengthBytesCount = 0;
                 int contentLength = LCore.Utils.BerLengthToInt(bytes, 1, out lengthBytesCount);
@@ -500,12 +442,6 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
                             int contentLength = LCore.Utils.BerLengthToInt(stream, out n);
                             byte[] contentBytes = new byte[contentLength];
                             stream.Read(contentBytes, 0, contentLength);
-#if LOGIT
-                            byte[] pushLOG = new byte[1 + contentLength];
-                            pushLOG[0] = tagByte[0];
-                            for (int pL = 0; pL < contentLength; pL++) { pushLOG[pL + 1] = contentBytes[pL]; }
-                            LCore.LdapPacket.LogBytes(pushLOG, true);
-#endif
                             packet = new LCore.LdapPacket(LCore.Tag.Parse(tagByte[0]));
                             packet.ChildAttributes.AddRange(LCore.LdapAttribute.ParseAttributes(contentBytes, 0, contentLength));
                             return true;
@@ -574,7 +510,7 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
         bool Validate(string UserName, string Password, out bool IsAdmin);
         SysClG.IEnumerable<LDap.IUserData> ListUsers();
     }
-
+#if TESTING
     internal class UserData : LDap.IUserData //testing purposes only
     {
         public string UserName { get; set; }
@@ -610,8 +546,7 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
         public string Address { get; set; }
     }
 
-    //See also http://tldp.org/HOWTO/archived/LDAP-Implementation-HOWTO/schemas.html
-    internal class TestSource : LDap.IDataSource //testing purposes only
+    internal class TestSource : LDap.IDataSource //testing purposes only | See also http://tldp.org/HOWTO/archived/LDAP-Implementation-HOWTO/schemas.html
     {
         public LDap.ICompany Company { get; protected set; }
         public string LDAPRoot { get { return "cn=Users,dc=company,dc=com"; } }
@@ -623,6 +558,7 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
             yield return new LDap.UserData("ainz.ooal.gown", "ainzsama@nazarick.com", "Ainz", "Ooal Gown") { Department = "Nazarick Mausoleum", Job = "Overlord", Mobile = "+9900900000099" };
             yield return new LDap.UserData("shalltear.bff", "shalltear@nazarick.com", "Shalltear", "Bloodfallen") { Department = "Base Floors", Job = "Guardian" };
             yield return new LDap.UserData("narberal", "narberal@nazarick.com", "Narberal", "Gamma") { Department = "Floor 10", Job = "Pleiade" };
+            yield return new LDap.UserData("sebas.tian", "sebas@nazarick.com", "Sebas", "Tian") { Department = "Floor 10", Job = "Buttler" };
         }
 
         public bool Validate(string UserName, string Password, out bool IsAdmin)
@@ -640,8 +576,16 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
             }
         }
 
-        internal static int Process(string[] args)
+        internal static int Main(string[] args)
         {
+            if (args == null || args.Length != 1)
+            {
+#if CLIENT
+                args = new string[] { "n" };
+#else
+                args = new string[] { "y" };
+#endif
+            }
             char Mode = default(char);
             if (args != null) { Mode = args[0].ToCharArray()[0]; }
             else
@@ -668,18 +612,11 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
             return 0;
         }
 
-#if CLIENT
-        internal static int Main(string[] args) { return Process(new string[] { "n" }); }
-#else
-        internal static int Main(string[] args) { return Process(new string[] { "y" }); }
-#endif
-
         public TestSource() { this.Company = new LDap.Company() { Name = "Nazarick Inc.", Phone = "+9900900000000", Country = "Baharuth", State = "E-Rantel", City = "Nazarick", PostCode = "12123123", Address = "An Adress of" }; }
     }
-
+#endif
     public class Server //https://github.com/vforteli/Flexinets.Ldap.Server/blob/master/LdapServer.cs 
     {
-        private const int SimplePackCount = 7;
         public const int StandardPort = 389;
         public const string PosixAccount = "PosixAccount";
         public const string AMAccount = "sAMAccountName";
@@ -691,6 +628,8 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
         private LDap.SearchKey GetCompare(LDap.SearchKey[] pack, LDap.SearchKey key) { foreach (LDap.SearchKey val in pack) { if (val.Key == key.Key) { return val; } } return default(LDap.SearchKey); }
         private bool IsBind(LCore.LdapAttribute attr) { return (attr.LdapOperation == LCore.LdapOperation.BindRequest); }
         private bool IsSearch(LCore.LdapAttribute attr) { return (attr.LdapOperation == LCore.LdapOperation.SearchRequest); }
+        private void WriteAttributes(byte[] pkB, SysSock.NetworkStream stream) { stream.Write(pkB, 0, pkB.Length); }
+        private void WriteAttributes(LCore.LdapAttribute attr, SysSock.NetworkStream stream) { this.WriteAttributes(attr.GetBytes(), stream); }
 
         private int Matched(LDap.SearchKey[] pack, LDap.SearchKey key)
         {
@@ -725,9 +664,9 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
             }
         }
 
-        private LDap.SearchKey[] UserPack(LDap.IUserData user, bool Simple)
+        private LDap.SearchKey[] UserPack(LDap.IUserData user)
         {
-            LDap.SearchKey[] pk = new LDap.SearchKey[Simple ? LDap.Server.SimplePackCount : 23];
+            LDap.SearchKey[] pk = new LDap.SearchKey[23];
             pk[0] = new LDap.SearchKey("cn", user.UserName);
             pk[1] = new LDap.SearchKey("commonName", user.UserName);
             pk[2] = new LDap.SearchKey("mail", user.EMail);
@@ -735,32 +674,29 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
             pk[4] = new LDap.SearchKey("display-name", user.FullName);
             pk[5] = new LDap.SearchKey("company", this._validator.Company.Name);
             pk[6] = new LDap.SearchKey("objectClass", new string[] { LDap.Server.AMAccount, LDap.Server.PosixAccount });
-            if (!Simple)
-            {
-                pk[7] = new LDap.SearchKey("sn", user.LastName);
-                pk[8] = new LDap.SearchKey("surname", user.LastName);
-                pk[9] = new LDap.SearchKey("co", this._validator.Company.Country);
-                pk[10] = new LDap.SearchKey("organizationName", this._validator.Company.Name);
-                pk[11] = new LDap.SearchKey("givenName", user.FirstName);
-                pk[12] = new LDap.SearchKey("mailNickname", user.FullName);
-                pk[13] = new LDap.SearchKey("title", user.Job);
-                pk[14] = new LDap.SearchKey("telephoneNumber", this._validator.Company.Phone);
-                pk[15] = new LDap.SearchKey("initials", ((!string.IsNullOrEmpty(user.FirstName) && !string.IsNullOrEmpty(user.LastName)) ? new string[] { (user.FirstName.Substring(0, 1) + user.LastName.Substring(0, 1)) } : (null as string[])));
-                pk[16] = new LDap.SearchKey("postalAddress", this._validator.Company.Address);
-                pk[17] = new LDap.SearchKey("l", this._validator.Company.City);
-                pk[18] = new LDap.SearchKey("st", this._validator.Company.State);
-                pk[19] = new LDap.SearchKey("postalCode", this._validator.Company.PostCode);
-                pk[20] = new LDap.SearchKey("ou", user.Department);
-                pk[21] = new LDap.SearchKey("department", user.Department);
-                pk[22] = new LDap.SearchKey("mobile", user.Mobile);
-                //--- this.AddAttribute(partialAttributeList, "uid", "r1"); //unused
-                //--- this.AddAttribute(partialAttributeList, "o", "r2"); //unused
-                //--- this.AddAttribute(partialAttributeList, "legacyExcangeDN", "r3"); //i have no need (don't know whats for)
-                //--- this.AddAttribute(partialAttributeList, "physicalDeliveryOfficeName", "r4"); //i have no need
-                //--- this.AddAttribute(partialAttributeList, "secretary", "r5"); //i have no need
-                //--- this.AddAttribute(partialAttributeList, "roleOccupant", "r6"); //unused
-                //--- this.AddAttribute(partialAttributeList, "organizationUnitName", "r7"); //unused
-            }
+            pk[7] = new LDap.SearchKey("sn", user.LastName);
+            pk[8] = new LDap.SearchKey("surname", user.LastName);
+            pk[9] = new LDap.SearchKey("co", this._validator.Company.Country);
+            pk[10] = new LDap.SearchKey("organizationName", this._validator.Company.Name);
+            pk[11] = new LDap.SearchKey("givenName", user.FirstName);
+            pk[12] = new LDap.SearchKey("mailNickname", user.FullName);
+            pk[13] = new LDap.SearchKey("title", user.Job);
+            pk[14] = new LDap.SearchKey("telephoneNumber", this._validator.Company.Phone);
+            pk[15] = new LDap.SearchKey("initials", ((!string.IsNullOrEmpty(user.FirstName) && !string.IsNullOrEmpty(user.LastName)) ? new string[] { (user.FirstName.Substring(0, 1) + user.LastName.Substring(0, 1)) } : (null as string[])));
+            pk[16] = new LDap.SearchKey("postalAddress", this._validator.Company.Address);
+            pk[17] = new LDap.SearchKey("l", this._validator.Company.City);
+            pk[18] = new LDap.SearchKey("st", this._validator.Company.State);
+            pk[19] = new LDap.SearchKey("postalCode", this._validator.Company.PostCode);
+            pk[20] = new LDap.SearchKey("ou", user.Department);
+            pk[21] = new LDap.SearchKey("department", user.Department);
+            pk[22] = new LDap.SearchKey("mobile", user.Mobile);
+            //--- this.AddAttribute(partialAttributeList, "uid", "r1"); //unused
+            //--- this.AddAttribute(partialAttributeList, "o", "r2"); //unused
+            //--- this.AddAttribute(partialAttributeList, "legacyExcangeDN", "r3"); //i have no need (don't know whats for)
+            //--- this.AddAttribute(partialAttributeList, "physicalDeliveryOfficeName", "r4"); //i have no need
+            //--- this.AddAttribute(partialAttributeList, "secretary", "r5"); //i have no need
+            //--- this.AddAttribute(partialAttributeList, "roleOccupant", "r6"); //unused
+            //--- this.AddAttribute(partialAttributeList, "organizationUnitName", "r7"); //unused
             return pk;
         }
 
@@ -776,23 +712,13 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
             return response;
         }
 
-        private void WriteAttributes(byte[] pkB, SysSock.NetworkStream stream)
-        {
-#if LOGIT
-            LCore.LdapPacket.LogBytes(pkB, false);
-#endif
-            stream.Write(pkB, 0, pkB.Length);
-        }
-
-        private void WriteAttributes(LCore.LdapAttribute attr, SysSock.NetworkStream stream) { this.WriteAttributes(attr.GetBytes(), stream); }
-
         private void ReturnAllUsers(SysSock.NetworkStream stream, int MessageID, int Limit)
         {
             foreach (LDap.IUserData user in this._validator.ListUsers())
             {
                 if (Limit > 0)
                 {
-                    using (LCore.LdapPacket pkO = this.RespondUserData(user, this.UserPack(user, true), MessageID)) { this.WriteAttributes(pkO, stream); }
+                    using (LCore.LdapPacket pkO = this.RespondUserData(user, this.UserPack(user), MessageID)) { this.WriteAttributes(pkO, stream); }
                     Limit--;
                 } else { break; }
             }
@@ -803,7 +729,7 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
             if (!string.IsNullOrEmpty(UserName))
             {
                 UserName = UserName.ToLower();
-                foreach (LDap.IUserData user in this._validator.ListUsers()) { if (user.UserName == UserName) { using (LCore.LdapPacket pkO = this.RespondUserData(user, this.UserPack(user, false), MessageID)) { this.WriteAttributes(pkO, stream); } break; } }
+                foreach (LDap.IUserData user in this._validator.ListUsers()) { if (user.UserName == UserName) { using (LCore.LdapPacket pkO = this.RespondUserData(user, this.UserPack(user), MessageID)) { this.WriteAttributes(pkO, stream); } break; } }
             }
         }
 
@@ -874,18 +800,14 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
                 Matched = false;
                 if (Limit > 0)
                 {
-                    pack = this.UserPack(user, false);
+                    pack = this.UserPack(user);
                     switch (args.Filter)
                     {
                         case LCore.LdapFilterChoice.or:
                             foreach (LDap.SearchKey key in args.Keys)
                             {
                                 mcount = this.Matched(pack, key);
-                                if (mcount > 0)
-                                {
-                                    Matched = true;
-                                    break;
-                                }
+                                if (mcount > 0) { Matched = true; break; }
                             }
                             break;
                         case LCore.LdapFilterChoice.and:
@@ -895,18 +817,13 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
                                 foreach (LDap.SearchKey key in args.Keys)
                                 {
                                     mcount = this.Matched(pack, key);
-                                    if (mcount != 2)
-                                    {
-                                        Matched = false;
-                                        break;
-                                    }
+                                    if (mcount != 2) { Matched = false; break; }
                                 }
                             }
                             break;
                     }
                     if (Matched)
                     {
-                        Sys.Array.Resize<LDap.SearchKey>(ref pack, LDap.Server.SimplePackCount);
                         using (LCore.LdapPacket pkO = this.RespondUserData(user, pack, MessageID)) { this.WriteAttributes(pkO, stream); }
                         Limit--;
                     }
