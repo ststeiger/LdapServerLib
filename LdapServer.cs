@@ -552,7 +552,7 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
             else
             {
                 int m = 0;
-                foreach (string kv in key.Values) { if (comp.Value != null && comp.Value.Contains(kv)) { m++; break; } }
+                foreach (string kv in key.Values) { if (comp.Value != null && comp.Value.IndexOf(kv, 0, Sys.StringComparison.CurrentCultureIgnoreCase) > -1) { m++; break; } }
                 if (m == key.Values.Length) { m = 2; } else if (m > 0) { m = 1; }
                 return m;
             }
