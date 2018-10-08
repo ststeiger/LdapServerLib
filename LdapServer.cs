@@ -548,7 +548,7 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
         {
             LDap.SearchValue comp = this.GetCompare(pack, key);
             if (comp.Keys == null || comp.Keys.Length == 0) { return -1; }
-            else if (key.Values == null || key.Values.Length == 0 || (key.Values.Length == 1 && key.Values[0] == "*")) { return 2; }
+            else if (key.Values == null || key.Values.Length == 0 || (key.Values.Length == 1 && (key.Values[0] == "*" || key.Values[0] == ""))) { return 2; }
             else
             {
                 int m = 0;
