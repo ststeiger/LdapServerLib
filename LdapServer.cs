@@ -16,7 +16,7 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
         {
             internal static byte[] StringToByteArray(string hex, bool trimWhitespace = true)
             {
-                if (trimWhitespace) { hex = hex.Replace(" ", ""); }
+                if (trimWhitespace) { hex = hex.Replace(" ", string.Empty); }
                 int NumberChars = hex.Length;
                 byte[] bytes = new byte[NumberChars / 2];
                 for (int i = 0; i < NumberChars; i += 2) { bytes[i / 2] = SysConv.ToByte(hex.Substring(i, 2), 16); }
