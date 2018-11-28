@@ -908,14 +908,7 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
 
         internal static int Main(string[] args)
         {
-            if (args == null || args.Length != 1)
-            {
-#if CLIENT
-                args = new string[] { "n" };
-#else
-                args = new string[] { "y" };
-#endif
-            }
+            if (args == null || args.Length != 1) { args = new string[] { "y" }; }
             char Mode = default(char);
             if (args != null) { Mode = args[0].ToCharArray()[0]; }
             else
@@ -930,13 +923,7 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
                     LDap.Server s = new LDap.Server(new LDap.TestSource(), "127.0.0.1");
                     s.Start();
                     break;
-                default:
-#if CLIENT
-                    LDap.Root r = new LDap.Root(LDap.Root.GetRoot("user1", "1234", "127.0.0.1/cn=Users,dc=dev,dc=company,dc=com", QueryUser: false));
-                    Sys.DirectoryServices.DirectoryEntry[] ms = LDap.Root.GetChildren(r, FullTree: false, Filter: "(objectClass=posixAccount)");
-                    Sys.Console.WriteLine(ms == null ? "0" : ms.Length.ToString());
-#endif
-                    break;
+                default: break;
             }
             Sys.Console.ReadKey();
             return 0;
