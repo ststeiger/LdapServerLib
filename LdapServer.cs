@@ -908,24 +908,9 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
 
         internal static int Main(string[] args)
         {
-            if (args == null || args.Length != 1) { args = new string[] { "y" }; }
-            char Mode = default(char);
-            if (args != null) { Mode = args[0].ToCharArray()[0]; }
-            else
-            {
-                Sys.Console.WriteLine("Set Server [Y] or Client [N]. Set server first!");
-                Mode = Sys.Console.ReadKey().KeyChar;
-            }
-            switch (Mode)
-            {
-                case 'y':
-                case 'Y':
-                    LDap.Server s = new LDap.Server(new LDap.TestSource(), "127.0.0.1");
-                    s.Start();
-                    break;
-                default: break;
-            }
-            Sys.Console.ReadKey();
+            LDap.Server s = new LDap.Server(new LDap.TestSource(), "127.0.0.1");
+            s.Start();
+            Sys.Console.ReadKey(); //without this the program would end; the server must be hosted on a persisting task
             return 0;
         }
 
