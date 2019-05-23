@@ -186,7 +186,7 @@ namespace Libs.LDAP //https://docs.iredmail.org/use.openldap.as.address.book.in.
             ExtendedRequest = 23,
             ExtendedResponse = 24,
             IntermediateResponse = 25,
-            NONE = 255 //SAMMUEL
+            NONE = 255 //SAMMUEL (not in protocol - never use it!)
         }
 
         public enum LdapResult : byte
