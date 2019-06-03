@@ -7,8 +7,10 @@ To implement on a "production" environment would be required to replace the `Tes
 **Thanks to constant help from it's original developer i'm at the stage where both Microsoft Outlook and Mozilla Thunderbird runs smoothly with it as an Address book provider**
 
 ---
+Edit: 2019-06-03
 
 **Some explanation is in order**
+
 As i was approached by another user with a questioning i decided to provide a little more help here, and perhaps soon the Windows Service implementation.
 
 In this code, the Server class is initialized by:
