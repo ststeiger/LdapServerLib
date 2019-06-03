@@ -8,7 +8,7 @@ To implement on a "production" environment would be required to replace the `Tes
 
 ---
 
-**Some explanation are in order**
+**Some explanation is in order**
 As i was approached by another user with a questioning i decided to provide a little more help here, and perhaps soon the Windows Service implementation.
 
 In this code, the Server class is initialized by:
