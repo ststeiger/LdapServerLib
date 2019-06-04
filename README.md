@@ -48,3 +48,7 @@ Just open a Command Line Console (cmd - or Powershell) and call the executable f
 Taking Mozilla's Thunderbird as an example, this should be the resulting configuration and responses of a search (using "*" as argument) to list all contacts on the LDAPRoot provided:
 
 <img src="https://github.com/Sammuel-Miranda/LdapServerLib/blob/master/Thunderbird.png" alt="Example" title="Example" style="max-width:100%;">
+
+And also, the configuration used to connect to Microsoft's Outlook:
+
+<img src="https://github.com/Sammuel-Miranda/LdapServerLib/blob/master/Outlook.png" alt="Example" title="Example" style="max-width:100%;">
