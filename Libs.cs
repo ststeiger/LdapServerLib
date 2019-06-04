@@ -990,7 +990,7 @@ namespace Libs.LDAP
                     responsePacket.ChildAttributes.Add(new LCore.LdapResultAttribute(LCore.LdapOperation.CompareResponse, LCore.LdapResult.compareFalse));
                     this.WriteAttributes(responsePacket, stream);
                 }
-#if TESTING
+#if DEBUG
             } catch (Sys.Exception e) { Sys.Console.WriteLine(Sys.DateTime.Now.ToString() + " exception: " + e.Message); }
 #else
             } catch { /* NOTHING */ }
