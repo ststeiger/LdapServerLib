@@ -1004,7 +1004,7 @@ namespace Libs.LDAP
             this._running = false;
         }
 
-        private void OnClientConnect(Sys.IAsyncResult asyn) { this.HandleClient(this._server.EndAcceptTcpClient(asyn)); }
+        private void OnClientConnect(Sys.IAsyncResult asyn) { try { if (this._server != null) { this.HandleClient(this._server.EndAcceptTcpClient(asyn)); } } catch { /* NOTHING */ } }
         protected Server(Sys.Net.IPEndPoint localEndpoint) { this._server = new SysSock.TcpListener(localEndpoint); }
         public Server(LDap.IDataSource Validator, Sys.Net.IPEndPoint localEndpoint) : this(localEndpoint) { this._validator = Validator; }
         public Server(LDap.IDataSource Validator, string localEndpoint, int Port) : this(new Sys.Net.IPEndPoint(Sys.Net.IPAddress.Parse(localEndpoint), Port)) { this._validator = Validator; }
