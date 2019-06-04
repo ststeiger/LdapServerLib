@@ -40,3 +40,11 @@ Just open a Command Line Console (cmd - or Powershell) and call the executable f
 > C:\app\ServiceLDAP.exe "stop" -> To stop the running service (once installed and started)
 
 > C:\app\ServiceLDAP.exe "uninstall" -> To uninstall it from the service list on Windows
+
+---
+
+**Using it on a e-mail managing client**
+
+Taking Mozilla's Thunderbird as an example, this should be the resulting configuration and responses of a search (using "*" as argument):
+
+<img src="https://github.com/Sammuel-Miranda/LdapServerLib/blob/master/Thunderbird.png" alt="Example" title="Example" style="max-width:100%;">
