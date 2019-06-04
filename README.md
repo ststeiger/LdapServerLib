@@ -43,8 +43,8 @@ Just open a Command Line Console (cmd - or Powershell) and call the executable f
 
 ---
 
-**Using it on a e-mail managing client**
+**Using it on an e-mail managing client**
 
-Taking Mozilla's Thunderbird as an example, this should be the resulting configuration and responses of a search (using "*" as argument):
+Taking Mozilla's Thunderbird as an example, this should be the resulting configuration and responses of a search (using "*" as argument) to list all contacts on the LDAPRoot provided:
 
 <img src="https://github.com/Sammuel-Miranda/LdapServerLib/blob/master/Thunderbird.png" alt="Example" title="Example" style="max-width:100%;">
