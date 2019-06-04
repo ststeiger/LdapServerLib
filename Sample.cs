@@ -84,11 +84,11 @@ namespace Sample
     {
         public const string ServiceName = "SampleLDAP_C";
         public const string ServiceDescription = "Sample of a Service implementation, hosting a LDAP Server";
-        private void Process(string[] args) { LServ.ServiceInstaller.Process(LSam.Service.ServiceName, new SysClG.List<LServ.IServer>() { new LDap.Server(new LSam.TestSource(), "127.0.0.1", 389) }, args); }
+        private static void Process(string[] args) { LServ.ServiceInstaller.Process(LSam.Service.ServiceName, new SysClG.List<LServ.IServer>() { new LDap.Server(new LSam.TestSource(), "127.0.0.1", 389) }, args); }
 
         internal static int Main(string[] args)
         {
-            this.Process(args);
+            LSam.Service.Process(args);
             return 0;
         }
 
