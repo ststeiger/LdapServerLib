@@ -1,4 +1,4 @@
-﻿using Sys = global::System;
+using Sys = global::System;
 using SysConv = global::System.Convert;
 using SysTxt = global::System.Text;
 using SysCll = global::System.Collections;
@@ -63,6 +63,7 @@ namespace Libs.Service
 
     [Sys.ComponentModel.RunInstaller(true)] public abstract class ServiceInstaller : SysCfg.Install.Installer
     {
+        internal const string LogDateFormat = "yyyy-MM-dd hh:mm:ss.fff";
         public const string InstallKey = "install";
         public const string StartKey = "start";
         public const string AutoStartKey = "auto";
@@ -91,13 +92,12 @@ namespace Libs.Service
 
         private static void Run(SysClG.IList<LServ.IServer> Servers)
         {
-            const string DateFormat = "yyyy-MM-dd hh:mm:ss.fff";
-            Sys.Console.WriteLine("Will Instantiate Server with " + Servers.Count.ToString() + " Servers Listening (" + Sys.DateTime.Now.ToString(DateFormat, Sys.Globalization.CultureInfo.InvariantCulture) + ")");
+            Sys.Console.WriteLine("Will Instantiate Server with " + Servers.Count.ToString() + " Servers Listening (" + Sys.DateTime.Now.ToString(LServ.ServiceInstaller.LogDateFormat, Sys.Globalization.CultureInfo.InvariantCulture) + ")");
             using (LServ.ServiceRunner instance = new LServ.ServiceRunner(Servers))
             {
-                Sys.Console.WriteLine("Server Instantiated, Will call the \"Execute()\" method (" + Sys.DateTime.Now.ToString(DateFormat, Sys.Globalization.CultureInfo.InvariantCulture) + ")");
+                Sys.Console.WriteLine("Server Instantiated, Will call the \"Execute()\" method (" + Sys.DateTime.Now.ToString(LServ.ServiceInstaller.LogDateFormat, Sys.Globalization.CultureInfo.InvariantCulture) + ")");
                 instance.Execute();
-                Sys.Console.WriteLine("\"Execute()\" method completed, all Servers are Listening (" + Sys.DateTime.Now.ToString(DateFormat, Sys.Globalization.CultureInfo.InvariantCulture) + ")");
+                Sys.Console.WriteLine("\"Execute()\" method completed, all Servers are Listening (" + Sys.DateTime.Now.ToString(LServ.ServiceInstaller.LogDateFormat, Sys.Globalization.CultureInfo.InvariantCulture) + ")");
                 Sys.Console.WriteLine("Server is Running, press any key to Stop it");
                 Sys.Console.WriteLine();
                 Sys.Console.ReadKey();
@@ -699,7 +699,10 @@ namespace Libs.LDAP
         private bool IsSearch(LCore.LdapAttribute attr) { return (attr.LdapOperation == LCore.LdapOperation.SearchRequest); }
         private void WriteAttributes(byte[] pkB, SysSock.NetworkStream stream) { stream.Write(pkB, 0, pkB.Length); }
         private void WriteAttributes(LCore.LdapAttribute attr, SysSock.NetworkStream stream) { this.WriteAttributes(attr.GetBytes(), stream); }
-
+#if DEBUG
+        private string LogThread() { return "{Thread;" + Sys.Threading.Thread.CurrentContext.ContextID.ToString() + ";" + Sys.Threading.Thread.CurrentThread.ManagedThreadId.ToString() + "}"; }
+        private string LogDate() { return Sys.DateTime.Now.ToString(LServ.ServiceInstaller.LogDateFormat, Sys.Globalization.CultureInfo.InvariantCulture); }
+#endif
         private int Matched(LDap.SearchValue[] pack, LDap.SearchKey key)
         {
             LDap.SearchValue comp = this.GetCompare(pack, key);
@@ -784,6 +787,9 @@ namespace Libs.LDAP
 
         private void ReturnAllUsers(SysSock.NetworkStream stream, int MessageID, int Limit)
         {
+#if DEBUG
+            Sys.Console.WriteLine(">>>> " + this.LogThread() + "ReturnAllUsers(NetworkStream,int,int) started at " + this.LogDate());
+#endif
             foreach (LDap.IUserData user in this._validator.ListUsers())
             {
                 if (Limit > 0)
@@ -792,10 +798,16 @@ namespace Libs.LDAP
                     Limit--;
                 } else { break; }
             }
+#if DEBUG
+            Sys.Console.WriteLine(">>> " + this.LogThread() + "ReturnAllUsers(NetworkStream,int,int) ended at " + this.LogDate());
+#endif
         }
 
         private void ReturnSingleUser(SysSock.NetworkStream stream, int MessageID, string UserName)
         {
+#if DEBUG
+            Sys.Console.WriteLine(">>>> " + this.LogThread() + "ReturnSingleUser(NetworkStream,int,string) started at " + this.LogDate());
+#endif
             if (!string.IsNullOrEmpty(UserName))
             {
                 UserName = UserName.ToLower();
@@ -856,12 +868,24 @@ namespace Libs.LDAP
                         }
                     }
                 } else { args.Keys.Add(cur); }
-            } catch { args.Keys.Clear(); }
+            }
+#if DEBUG
+            catch (Sys.Exception e)
+            {
+                args.Keys.Clear();
+                Sys.Console.WriteLine(">>>>> " + this.LogThread() + "GetSearchOptions(LdapAttribute) error at " + this.LogDate() + ", exception: " + e.Message);
+            }
+#else
+            catch { args.Keys.Clear(); }
+#endif
             return args;
         }
 
         private void ReturnUsers(SysSock.NetworkStream stream, int MessageID, int Limit, LDap.SearchCondition args)
         {
+#if DEBUG
+            Sys.Console.WriteLine(">>> " + this.LogThread() + "ReturnUsers(NetworkStream,int,int,SearchCondition) started at " + this.LogDate());
+#endif
             LDap.SearchValue[] pack = null;
             bool Matched = false;
             int mcount = -1;
@@ -899,10 +923,16 @@ namespace Libs.LDAP
                     }
                 } else { break; }
             }
+#if DEBUG
+            Sys.Console.WriteLine(">>> " + this.LogThread() + "ReturnUsers(NetworkStream,int,int,SearchCondition) ended at " + this.LogDate());
+#endif
         }
 
         private void HandleSearchRequest(SysSock.NetworkStream stream, LCore.LdapPacket requestPacket, bool IsAdmin)
         {
+#if DEBUG
+            Sys.Console.WriteLine(">>> " + this.LogThread() + "HandleSearchRequest(NetworkStream,LdapPacket,bool) started at " + this.LogDate());
+#endif
             LCore.LdapAttribute searchRequest = LCore.Utils.SingleOrDefault<LCore.LdapAttribute>(requestPacket.ChildAttributes, o => { return o.LdapOperation == LCore.LdapOperation.SearchRequest; });
             LCore.LdapPacket responsePacket = new LCore.LdapPacket(requestPacket.MessageId);
             if (searchRequest == null) { responsePacket.ChildAttributes.Add(new LCore.LdapResultAttribute(LCore.LdapOperation.SearchResultDone, LCore.LdapResult.compareFalse)); }
@@ -944,14 +974,26 @@ namespace Libs.LDAP
                 }
                 responsePacket.ChildAttributes.Add(new LCore.LdapResultAttribute(LCore.LdapOperation.SearchResultDone, LCore.LdapResult.success));
             }
+#if DEBUG
+            Sys.Console.WriteLine(">>> " + this.LogThread() + "HandleSearchRequest(NetworkStream,LdapPacket,bool) done at " + this.LogDate());
+#endif
             this.WriteAttributes(responsePacket, stream);
         }
 
         private bool HandleBindRequest(SysSock.NetworkStream stream, LCore.LdapPacket requestPacket, out bool IsAdmin)
         {
+#if DEBUG
+            Sys.Console.WriteLine(">>> " + this.LogThread() + "HandleBindRequest(NetworkStream,LdapPacket,out bool) started at " + this.LogDate());
+#endif
             IsAdmin = false;
             LCore.LdapAttribute bindrequest = LCore.Utils.SingleOrDefault<LCore.LdapAttribute>(requestPacket.ChildAttributes, o => { return o.LdapOperation == LCore.LdapOperation.BindRequest; });
-            if (bindrequest == null) { return false; }
+            if (bindrequest == null)
+            {
+#if DEBUG
+                Sys.Console.WriteLine(">>> " + this.LogThread() + "HandleBindRequest(NetworkStream,LdapPacket,out bool) completed as FALSE at " + this.LogDate());
+#endif
+                return false;
+            }
             else
             {
                 string username = this.ExtractUser(bindrequest.ChildAttributes[1].GetValue<string>());
@@ -961,22 +1003,39 @@ namespace Libs.LDAP
                 LCore.LdapPacket responsePacket = new LCore.LdapPacket(requestPacket.MessageId);
                 responsePacket.ChildAttributes.Add(new LCore.LdapResultAttribute(LCore.LdapOperation.BindResponse, response));
                 this.WriteAttributes(responsePacket, stream);
+#if DEBUG
+                Sys.Console.WriteLine(">>> " + this.LogThread() + "HandleBindRequest(NetworkStream,LdapPacket,out bool) completed with response " + response.ToString() + " at " + this.LogDate());
+#endif
                 return (response == LCore.LdapResult.success);
             }
         }
 
         private void HandleClient(SysSock.TcpClient client)
         {
+#if DEBUG
+            Sys.Console.WriteLine(">>> " + this.LogThread() + "HandleClient(TcpClient) started at " + this.LogDate());
+#endif
             this._server.BeginAcceptTcpClient(this.OnClientConnect, null);
             try
             {
                 bool isBound = false;
                 bool IsAdmin = false;
                 bool nonSearch = true;
+#if DEBUG
+                Sys.Console.WriteLine(">>> " + this.LogThread() + "HandleClient(TcpClient), will call GetStream() at " + this.LogDate());
+#endif
                 SysSock.NetworkStream stream = client.GetStream();
+#if DEBUG
+                Sys.Console.WriteLine(">>> " + this.LogThread() + "HandleClient(TcpClient), GetStream() completed at " + this.LogDate());
+                long loopCount = 0;
+#endif
                 LCore.LdapPacket requestPacket = null;
                 while (LCore.LdapPacket.TryParsePacket(stream, out requestPacket))
                 {
+#if DEBUG
+                    loopCount++;
+                    Sys.Console.WriteLine(">>> " + this.LogThread() + "HandleClient(TcpClient), PacketParsed (" + loopCount.ToString() + ") at " + this.LogDate());
+#endif
                     if (LCore.Utils.Any<LCore.LdapAttribute>(requestPacket.ChildAttributes, this.IsBind)) { isBound = this.HandleBindRequest(stream, requestPacket, out IsAdmin); }
                     if (isBound && LCore.Utils.Any<LCore.LdapAttribute>(requestPacket.ChildAttributes, this.IsSearch))
                     {
@@ -984,6 +1043,9 @@ namespace Libs.LDAP
                         this.HandleSearchRequest(stream, requestPacket, IsAdmin);
                     }
                 }
+#if DEBUG
+                Sys.Console.WriteLine(">>> " + this.LogThread() + "HandleClient(TcpClient), Packet parse completed at " + this.LogDate());
+#endif
                 if (nonSearch && (!isBound) && (requestPacket != null))
                 {
                     LCore.LdapPacket responsePacket = new LCore.LdapPacket(requestPacket.MessageId);
@@ -991,7 +1053,7 @@ namespace Libs.LDAP
                     this.WriteAttributes(responsePacket, stream);
                 }
 #if DEBUG
-            } catch (Sys.Exception e) { Sys.Console.WriteLine(Sys.DateTime.Now.ToString() + " exception: " + e.Message); }
+            } catch (Sys.Exception e) { Sys.Console.WriteLine(">>> " + this.LogThread() + "HandleClient(TcpClient) error at " + this.LogDate() + ", exception: " + e.Message); }
 #else
             } catch { /* NOTHING */ }
 #endif
@@ -1004,7 +1066,22 @@ namespace Libs.LDAP
             this._running = false;
         }
 
-        private void OnClientConnect(Sys.IAsyncResult asyn) { try { if (this._server != null) { this.HandleClient(this._server.EndAcceptTcpClient(asyn)); } } catch { /* NOTHING */ } }
+        private void OnClientConnect(Sys.IAsyncResult asyn)
+        {
+#if DEBUG
+            Sys.Console.WriteLine();
+            Sys.Console.WriteLine("> Thread: " + this.LogThread());
+            Sys.Console.WriteLine(">> " + this.LogThread() + "OnClientConnect(IAsyncResult) called");
+#endif
+            try { if (this._server != null) { this.HandleClient(this._server.EndAcceptTcpClient(asyn)); } }
+#if DEBUG
+            catch (Sys.Exception e) { Sys.Console.WriteLine(">> " + this.LogThread() + "OnClientConnect(IAsyncResult) error at " + this.LogDate() + ", exception: " + e.Message); }
+            Sys.Console.WriteLine(">> " + this.LogThread() + "OnClientConnect(IAsyncResult) ended");
+#else
+            catch { /* NOTHING */ }
+#endif
+        }
+        
         protected Server(Sys.Net.IPEndPoint localEndpoint) { this._server = new SysSock.TcpListener(localEndpoint); }
         public Server(LDap.IDataSource Validator, Sys.Net.IPEndPoint localEndpoint) : this(localEndpoint) { this._validator = Validator; }
         public Server(LDap.IDataSource Validator, string localEndpoint, int Port) : this(new Sys.Net.IPEndPoint(Sys.Net.IPAddress.Parse(localEndpoint), Port)) { this._validator = Validator; }
