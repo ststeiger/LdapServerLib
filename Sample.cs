@@ -26,6 +26,7 @@ namespace Sample
             this.FirstName = FirstName;
             this.LastName = LastName;
             this.EMail = EMail;
+            this.Password = Password;
         }
 
         public UserData(string UserName, string EMail, string Password) : this(UserName, EMail, string.Empty, string.Empty, Password) { /* NOTHING */ }
