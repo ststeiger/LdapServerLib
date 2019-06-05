@@ -1,4 +1,4 @@
-﻿#if DEBUG
+#if DEBUG
 using Sys = global::System;
 using SysClG = global::System.Collections.Generic;
 using SysService = global::System.ServiceProcess;
@@ -89,6 +89,18 @@ namespace Sample
 
         internal static int Main(string[] args)
         {
+            //const int UF_ACCOUNTDISABLE = 0x0002; //Get all User Account Info
+            //SysClG.List<string> lstUsers = new SysClG.List<string>();
+            //Sys.DirectoryServices.DirectoryEntry localMachine = new Sys.DirectoryServices.DirectoryEntry("WinNT://" + Sys.Environment.MachineName);
+            //foreach (Sys.DirectoryServices.DirectoryEntry e in localMachine.Children)
+            //{
+                //if (e.SchemaClassName == "User")
+                //{
+                    //lstUsers.Add(e.Name + ((((int)e.Properties["UserFlags"].Value & UF_ACCOUNTDISABLE) != UF_ACCOUNTDISABLE) ? " - Active" : " - Inactive"));
+                    //foreach (Sys.DirectoryServices.PropertyValueCollection p in e.Properties) { lstUsers.Add("> " + p.PropertyName + ":" + p.Value.ToString()); }
+                //}
+            //}
+            //return lstUsers.Count;
             LSam.Service.Process(args);
             return 0;
         }
