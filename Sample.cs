@@ -9,19 +9,22 @@ namespace Sample
 {
     internal class UserData : LDap.IUserData //testing purposes only
     {
+        public long UserID { get; set; }
         public string UserName { get; set; }
+        string LDap.INamed.Name { get { return this.UserName; } }
         public string FirstName { get; set; }
         public string LastName { get; set; }
         public string FullName { get { return (this.FirstName + " " + this.LastName); } }
         public string EMail { get; set; }
-        public string Department { get; set; }
+        public LDap.IGroup Department { get; set; }
         public string Job { get; set; }
         public string Mobile { get; set; }
         internal string Password { get; set; }
         public virtual bool TestPassword(string Password) { return (this.Password == Password); }
 
-        public UserData(string UserName, string EMail, string FirstName, string LastName, string Password)
+        public UserData(long UserID, string UserName, string EMail, string FirstName, string LastName, string Password)
         {
+            this.UserID = UserID;
             this.UserName = UserName;
             this.FirstName = FirstName;
             this.LastName = LastName;
@@ -29,35 +32,37 @@ namespace Sample
             this.Password = Password;
         }
 
-        public UserData(string UserName, string EMail, string Password) : this(UserName, EMail, string.Empty, string.Empty, Password) { /* NOTHING */ }
-        public UserData(string UserName, string Password) : this(UserName, (UserName == null ? string.Empty : (UserName.Contains("@") ? UserName : string.Empty)), string.Empty, string.Empty, Password) { /* NOTHING */ }
+        public UserData(long UserID, string UserName, string EMail, string Password) : this(UserID, UserName, EMail, string.Empty, string.Empty, Password) { /* NOTHING */ }
+        public UserData(long UserID, string UserName, string Password) : this(UserID, UserName, (UserName == null ? string.Empty : (UserName.Contains("@") ? UserName : string.Empty)), string.Empty, string.Empty, Password) { /* NOTHING */ }
     }
 
-    internal class Company : LDap.ICompany //testing purposes only
+    internal class GroupData : LDap.IGroup //testing purposes only
     {
-        public string Name { get; set; }
-        public string Phone { get; set; }
-        public string Country { get; set; }
-        public string State { get; set; }
-        public string City { get; set; }
-        public string PostCode { get; set; }
-        public string Address { get; set; }
+        private LSam.TestSource source;
+        private string nm;
+        SysClG.IEnumerable<LDap.IGroup> LDap.IDataList.ListGroups() { return null; /* if Subgroups are used, than make a list of groups in this class and add users to it */ }
+        SysClG.IEnumerable<LDap.IUserData> LDap.IDataList.ListUsers() { foreach (LDap.IUserData user in this.source.users) { if (user.Department == this) { yield return user; } } }
+        string LDap.IGroup.BuildCN() { return "ou=" + this.nm + "," + (this.source as LDap.IGroup).BuildCN(); }
+        public string Name { get { return this.nm; } set { this.nm = (value == null ? "n" : value.ToLower()); } }
+
+        public GroupData(LSam.TestSource source, string Name)
+        {
+            this.source = source;
+            this.Name = Name;
+        }
     }
 
     internal class TestSource : LDap.IDataSource //testing purposes only | See also http://tldp.org/HOWTO/archived/LDAP-Implementation-HOWTO/schemas.html
     {
-        public LDap.ICompany Company { get; protected set; }
-        public string LDAPRoot { get; protected set; }
+        public LDap.Domain Domain { get; protected set; }
         public string AdminUser { get { return "admin"; } }
         public string AdminPassword { get { return "1234"; } }
-
-        public SysClG.IEnumerable<LDap.IUserData> ListUsers()
-        {
-            yield return new LSam.UserData("ainz.ooal.gown", "ainzsama@nazarick.com", "Ainz", "Ooal Gown", this.AdminPassword) { Department = "Nazarick Mausoleum", Job = "Overlord", Mobile = "+9900900000099" };
-            yield return new LSam.UserData("shalltear.bff", "shalltear@nazarick.com", "Shalltear", "Bloodfallen", this.AdminPassword) { Department = "Base Floors", Job = "Guardian" };
-            yield return new LSam.UserData("narberal", "narberal@nazarick.com", "Narberal", "Gamma", this.AdminPassword) { Department = "Floor 10", Job = "Pleiade" };
-            yield return new LSam.UserData("sebas.tian", "sebas@nazarick.com", "Sebas", "Tian", this.AdminPassword) { Department = "Floor 10", Job = "Buttler" };
-        }
+        internal SysClG.List<LDap.IUserData> users;
+        internal SysClG.List<LDap.IGroup> groups;
+        string LDap.INamed.Name { get { return this.Domain.NormalizedDC; } }
+        SysClG.IEnumerable<LDap.IUserData> LDap.IDataList.ListUsers() { return this.users; } //the idea here is if you call from root then it will list all users (from any group)
+        SysClG.IEnumerable<LDap.IGroup> LDap.IDataList.ListGroups() { return this.groups; }
+        string LDap.IGroup.BuildCN() { return this.Domain.ToString(); }
 
         public bool Validate(string UserName, string Password, out bool IsAdmin)
         {
@@ -69,15 +74,26 @@ namespace Sample
             else
             {
                 IsAdmin = false;
-                foreach (LDap.IUserData user in this.ListUsers()) { if (user.UserName == UserName) { return user.TestPassword(Password); } }
+                foreach (LDap.IUserData user in this.users) { if (user.Name == UserName) { return user.TestPassword(Password); } }
                 return false;
             }
         }
 
         public TestSource()
         {
-            this.Company = new LSam.Company() { Name = "Nazarick Inc.", Phone = "+9900900000000", Country = "Baharuth", State = "E-Rantel", City = "Nazarick", PostCode = "12123123", Address = "An Adress of" };
-            this.LDAPRoot = "cn=Users,dc=" + this.Company.Name.Replace(' ', '_').Replace('.', '_').Replace('\t', '_').Replace(',', '_') + ",dc=com"; 
+            this.Domain = new LDap.Domain(this) { Company = new LDap.Company() { Name = "Nazarick Inc.", Phone = "+9900900000000", Country = "Baharuth", State = "E-Rantel", City = "Nazarick", PostCode = "12123123", Address = "An Adress of" }, DomainCommon = "Com" };
+            this.groups = new SysClG.List<LDap.IGroup>(3);
+            LSam.GroupData gp = new LSam.GroupData(this, "Nazarick Mausoleum");
+            this.groups.Add(gp);
+            this.users = new SysClG.List<LDap.IUserData>(4);
+            this.users.Add(new LSam.UserData(1L, "ainz.ooal.gown", "ainzsama@nazarick.com", "Ainz", "Ooal Gown", this.AdminPassword) { Department = gp, Job = "Overlord", Mobile = "+9900900000099" });
+            gp = new LSam.GroupData(this, "Base Floors");
+            this.groups.Add(gp);
+            this.users.Add(new LSam.UserData(2L, "shalltear.bff", "shalltear@nazarick.com", "Shalltear", "Bloodfallen", this.AdminPassword) { Department = gp, Job = "Guardian" });
+            gp = new LSam.GroupData(this, "Floor 10");
+            this.groups.Add(gp);
+            this.users.Add(new LSam.UserData(3L, "narberal", "narberal@nazarick.com", "Narberal", "Gamma", this.AdminPassword) { Department = gp, Job = "Pleiade" });
+            this.users.Add(new LSam.UserData(4L, "sebas.tian", "sebas@nazarick.com", "Sebas", "Tian", this.AdminPassword) { Department = gp, Job = "Buttler" });
         }
     }
 
