@@ -98,9 +98,14 @@ namespace Libs.Service
                 Sys.Console.WriteLine("Server Instantiated, Will call the \"Execute()\" method (" + Sys.DateTime.Now.ToString(LServ.ServiceInstaller.LogDateFormat, Sys.Globalization.CultureInfo.InvariantCulture) + ")");
                 instance.Execute();
                 Sys.Console.WriteLine("\"Execute()\" method completed, all Servers are Listening (" + Sys.DateTime.Now.ToString(LServ.ServiceInstaller.LogDateFormat, Sys.Globalization.CultureInfo.InvariantCulture) + ")");
-                Sys.Console.WriteLine("Server is Running, press any key to Stop it");
+                Sys.Console.WriteLine("Server is Running, press any key to Stop it (or \"c\" to clear log)");
                 Sys.Console.WriteLine();
-                Sys.Console.ReadKey();
+                Sys.ConsoleKeyInfo K = Sys.Console.ReadKey();
+                while (K.KeyChar == 'c' || K.KeyChar == 'C')
+                {
+                    Sys.Console.Clear();
+                    K = Sys.Console.ReadKey();
+                }
             }
             Sys.Console.WriteLine();
             Sys.Console.WriteLine("Server has Stoped");
@@ -430,6 +435,13 @@ namespace Libs.LDAP
             NONE = 255 //SAMMUEL (not in protocol - never use it!)
         }
 
+        internal enum Scope : byte
+        {
+            baseObject = 0,
+            singleLevel = 1,
+            wholeSubtree = 2
+        }
+
         public class Tag
         {
             public byte TagByte { get; internal set; }
@@ -462,7 +474,7 @@ namespace Libs.LDAP
         public class LdapAttribute : Sys.IDisposable
         {
             private LCore.Tag _tag;
-            protected byte[] Value = new byte[0];
+            internal byte[] Value = new byte[0];
             public SysClG.List<LCore.LdapAttribute> ChildAttributes = new SysClG.List<LCore.LdapAttribute>();
             public LCore.TagClass Class { get { return this._tag.Class; } }
             public bool IsConstructed { get { return (this._tag.IsConstructed || this.ChildAttributes.Count > 0); } }
@@ -503,7 +515,7 @@ namespace Libs.LDAP
                 }
             }
 
-            public override string ToString() { return this._tag.ToString() + ",Value={" + ((this.Value == null || this.Value.Length == 0) ? "\"\"" : SysTxt.Encoding.UTF8.GetString(this.Value)) + "},attr=" + this.ChildAttributes.Count.ToString(); }
+            public override string ToString() { return this._tag.ToString() + ",Value={" + ((this.Value == null || this.Value.Length == 0) ? "\"\"" : (this.Value.Length == 1 ? this.Value[0].ToString() : SysTxt.Encoding.UTF8.GetString(this.Value))) + "},attr=" + this.ChildAttributes.Count.ToString(); }
             public T GetValue<T>() { return (T)SysConv.ChangeType(this.GetValue(), typeof(T)); }
 
             public byte[] GetBytes()
@@ -513,8 +525,7 @@ namespace Libs.LDAP
                 {
                     this._tag.IsConstructed = true;
                     foreach (LCore.LdapAttribute attr in this.ChildAttributes) { contentBytes.AddRange(attr.GetBytes()); }
-                }
-                else { contentBytes.AddRange(Value); }
+                } else { contentBytes.AddRange(Value); }
                 SysClG.List<byte> ret = new System.Collections.Generic.List<byte>(1);
                 ret.Add(this._tag.TagByte);
                 ret.AddRange(LCore.Utils.IntToBerLength(contentBytes.Count));
@@ -650,59 +661,113 @@ namespace Libs.LDAP
         internal SysClG.List<LDap.SearchKey> Keys = new SysClG.List<LDap.SearchKey>(30);
     }
 
-    public interface IUserData
+    public class Company
     {
-        string UserName { get; }
+        public string Name { get; set; }
+        public string Phone { get; set; }
+        public string Country { get; set; }
+        public string State { get; set; }
+        public string City { get; set; }
+        public string PostCode { get; set; }
+        public string Address { get; set; }
+    }
+
+    public interface IDataList
+    {
+        SysClG.IEnumerable<LDap.IUserData> ListUsers();
+        SysClG.IEnumerable<LDap.IGroup> ListGroups();
+    }
+
+    public interface INamed { string Name { get; } }
+    public interface IGroup : LDap.IDataList, LDap.INamed { string BuildCN(); }
+
+    public class Domain
+    {
+        protected LDap.IDataSource Source;
+        public LDap.Company Company { get; set; }
+        private string dc;
+        private string pc;
+        public string DomainCommon { get { return this.dc; } set { this.dc = (value == null ? "com" : value.ToLower()); } }
+        public override string ToString() { return ("dc=" + this.NormalizedDC + ",dc=" + this.DomainCommon); }
+
+        public string NormalizedDC
+        {
+            get
+            {
+                if (this.pc == null)
+                {
+                    this.pc = (this.Company == null ? "null" : this.Company.Name.Replace(' ', '.').Replace('\t', '.').Replace(';', '.').ToLower());
+                    if (this.pc.EndsWith(".")) { this.pc = this.pc.Substring(0, (this.pc.Length - 1)); }
+                }
+                return this.pc;
+            }
+        }
+
+        public Domain(LDap.IDataSource Source)
+        {
+            this.Source = Source;
+            this.dc = "com";
+        }
+    }
+
+    public interface IUserData : LDap.INamed
+    {
+        long UserID { get; }
         string FirstName { get; }
         string LastName { get; }
         string FullName { get; }
         string EMail { get; }
-        string Department { get; }
+        LDap.IGroup Department { get; }
         string Job { get; }
         string Mobile { get; }
         bool TestPassword(string Password);
     }
 
-    public interface ICompany
-    {
-        string Name { get; }
-        string Phone { get; }
-        string Country { get; }
-        string State { get; }
-        string City { get; }
-        string PostCode { get; }
-        string Address { get; }
-    }
-
-    public interface IDataSource
+    public interface IDataSource : LDap.IGroup
     {
         string AdminUser { get; }
         string AdminPassword { get; }
-        string LDAPRoot { get; }
-        LDap.ICompany Company { get; }
+        LDap.Domain Domain { get; }
         bool Validate(string UserName, string Password, out bool IsAdmin);
-        SysClG.IEnumerable<LDap.IUserData> ListUsers();
     }
 
     public class Server : LServ.IServer //https://github.com/vforteli/Flexinets.Ldap.Server/blob/master/LdapServer.cs | https://docs.iredmail.org/use.openldap.as.address.book.in.outlook.html
     {
         public const int StandardPort = 389;
-        public const string AMAccount = "sAMAccountName";
+        public const string AccountClass = "SAMAccount";
+        protected const string PosixAccountClass = "posixAccount";
+        protected const string GroupAccountClass = "organizationalUnit";
         private SysSock.TcpListener _server;
         private bool _running;
         bool LServ.IServer.IsStarted { get { return this._running; } }
         private LDap.IDataSource _validator;
         public LDap.IDataSource Validator { get { return this._validator; } }
-        private bool IsValidType(string type) { return (type == "objectClass" || type == LDap.Server.AMAccount); }
+        private bool IsValidType(ref string type) { return (type.ToLower() == "objectclass" || type == "top" || type == LDap.Server.AccountClass || type == LDap.Server.PosixAccountClass || type == LDap.Server.GroupAccountClass); }
         private LDap.SearchValue GetCompare(LDap.SearchValue[] pack, LDap.SearchKey key) { foreach (LDap.SearchValue val in pack) { foreach (string valKey in val.Keys) { if (valKey == key.Key) { return val; } } } return default(LDap.SearchValue); }
         private bool IsBind(LCore.LdapAttribute attr) { return (attr.LdapOperation == LCore.LdapOperation.BindRequest); }
         private bool IsSearch(LCore.LdapAttribute attr) { return (attr.LdapOperation == LCore.LdapOperation.SearchRequest); }
+        private bool IsDisconnect(LCore.LdapAttribute attr) { return (attr.LdapOperation == LCore.LdapOperation.UnbindRequest || attr.LdapOperation == LCore.LdapOperation.AbandonRequest); }
+        private string BuildCN(LDap.INamed named, LDap.IGroup Source) { return ("cn=" + named.Name + "," + Source.BuildCN()); }
         private void WriteAttributes(byte[] pkB, SysSock.NetworkStream stream) { stream.Write(pkB, 0, pkB.Length); }
         private void WriteAttributes(LCore.LdapAttribute attr, SysSock.NetworkStream stream) { this.WriteAttributes(attr.GetBytes(), stream); }
 #if DEBUG
         private string LogThread() { return "{Thread;" + Sys.Threading.Thread.CurrentContext.ContextID.ToString() + ";" + Sys.Threading.Thread.CurrentThread.ManagedThreadId.ToString() + "}"; }
         private string LogDate() { return Sys.DateTime.Now.ToString(LServ.ServiceInstaller.LogDateFormat, Sys.Globalization.CultureInfo.InvariantCulture); }
+
+        private void LogPacket(LCore.LdapAttribute pkO, int ident)
+        {
+            if (ident == 0) { Sys.Console.WriteLine("----------BEGIN----------"); }
+            Sys.Console.WriteLine(new string('.', (3 + ident)) + " " + pkO.ToString());
+            foreach (LCore.LdapAttribute pkI in pkO.ChildAttributes) { this.LogPacket(pkI, (ident + 1)); }
+            if (ident == 0) { Sys.Console.WriteLine("-----------END-----------"); }
+        }
 #endif
+        private LDap.IGroup FindGroup(string NormalizedNAME, LDap.IGroup Source, LCore.Scope Scope) //'... use Scope here as well
+        {
+            foreach (LDap.IGroup grp in Source.ListGroups()) { if (grp.Name == NormalizedNAME) { return grp; } }
+            return null;
+        }
+
         private int Matched(LDap.SearchValue[] pack, LDap.SearchKey key)
         {
             LDap.SearchValue comp = this.GetCompare(pack, key);
@@ -720,6 +785,13 @@ namespace Libs.LDAP
         public void Stop()
         {
             if (this._server != null) { this._server.Stop(); }
+            this._running = false;
+        }
+
+        void Sys.IDisposable.Dispose()
+        {
+            this.Stop();
+            this._server = null;
             this._running = false;
         }
 
@@ -743,27 +815,36 @@ namespace Libs.LDAP
             }
         }
 
+        private void BuildPack(LCore.LdapAttribute holder, LDap.SearchValue[] pack)
+        {
+            LCore.LdapAttribute partialAttributeList = new LCore.LdapAttribute(LCore.UniversalDataType.Sequence);
+            foreach (LDap.SearchValue pkItem in pack) { foreach (string Key in pkItem.Keys) { this.AddAttribute(partialAttributeList, Key, pkItem.Value); } }
+            holder.ChildAttributes.Add(partialAttributeList);
+        }
+
         private LDap.SearchValue[] UserPack(LDap.IUserData user)
         {
-            LDap.SearchValue[] pk = new LDap.SearchValue[17];
-            pk[0] = new LDap.SearchValue(new string[] { "cn", "commonName" }, user.UserName);
-            pk[1] = new LDap.SearchValue(new string[] { "mail" }, user.EMail);
-            pk[2] = new LDap.SearchValue(new string[] { "displayname", "display-name", "mailNickname", "mozillaNickname" }, user.FullName);
-            pk[3] = new LDap.SearchValue(new string[] { "givenName" }, user.FirstName);
-            pk[4] = new LDap.SearchValue(new string[] { "sn", "surname" }, user.LastName);
-            pk[5] = new LDap.SearchValue(new string[] { "ou", "department" }, user.Department);
-            pk[6] = new LDap.SearchValue(new string[] { "co", "countryname" }, this._validator.Company.Country);
-            pk[7] = new LDap.SearchValue(new string[] { "postalAddress", "streetaddress" }, this._validator.Company.Address);
-            pk[8] = new LDap.SearchValue(new string[] { "company", "organizationName" }, this._validator.Company.Name);
-            pk[9] = new LDap.SearchValue(new string[] { "objectClass" }, LDap.Server.AMAccount);
-            pk[10] = new LDap.SearchValue(new string[] { "title" }, user.Job);
-            pk[11] = new LDap.SearchValue(new string[] { "telephoneNumber" }, this._validator.Company.Phone);
-            pk[12] = new LDap.SearchValue(new string[] { "l" }, this._validator.Company.City);
-            pk[13] = new LDap.SearchValue(new string[] { "st" }, this._validator.Company.State);
-            pk[14] = new LDap.SearchValue(new string[] { "postalCode" }, this._validator.Company.PostCode);
-            pk[15] = new LDap.SearchValue(new string[] { "mobile" }, user.Mobile);
-            pk[16] = new LDap.SearchValue(new string[] { "initials" }, ((!string.IsNullOrEmpty(user.FirstName) && !string.IsNullOrEmpty(user.LastName)) ? (user.FirstName.Substring(0, 1) + user.LastName.Substring(0, 1)) : string.Empty));
-            //--- ("uid", "r1"); //unused
+            LDap.SearchValue[] pk = new LDap.SearchValue[20];
+            pk[0] = new LDap.SearchValue(new string[] { "cn", "commonName" }, user.Name);
+            pk[1] = new LDap.SearchValue(new string[] { "uid", "id" }, user.UserID.ToString());
+            pk[2] = new LDap.SearchValue(new string[] { "mail" }, user.EMail);
+            pk[3] = new LDap.SearchValue(new string[] { "displayname", "display-name", "mailNickname", "mozillaNickname" }, user.FullName);
+            pk[4] = new LDap.SearchValue(new string[] { "givenName" }, user.FirstName);
+            pk[5] = new LDap.SearchValue(new string[] { "sn", "surname" }, user.LastName);
+            pk[6] = new LDap.SearchValue(new string[] { "ou", "department" }, user.Department.Name);
+            pk[7] = new LDap.SearchValue(new string[] { "co", "countryname" }, this._validator.Domain.Company.Country);
+            pk[8] = new LDap.SearchValue(new string[] { "postalAddress", "streetaddress" }, this._validator.Domain.Company.Address);
+            pk[9] = new LDap.SearchValue(new string[] { "company", "organizationName" }, this._validator.Domain.Company.Name);
+            pk[10] = new LDap.SearchValue(new string[] { "objectClass" }, LDap.Server.AccountClass);
+            pk[11] = new LDap.SearchValue(new string[] { "objectClass" }, LDap.Server.PosixAccountClass);
+            pk[12] = new LDap.SearchValue(new string[] { "objectClass" }, "top");
+            pk[13] = new LDap.SearchValue(new string[] { "title" }, user.Job);
+            pk[14] = new LDap.SearchValue(new string[] { "telephoneNumber" }, this._validator.Domain.Company.Phone);
+            pk[15] = new LDap.SearchValue(new string[] { "l" }, this._validator.Domain.Company.City);
+            pk[16] = new LDap.SearchValue(new string[] { "st" }, this._validator.Domain.Company.State);
+            pk[17] = new LDap.SearchValue(new string[] { "postalCode" }, this._validator.Domain.Company.PostCode);
+            pk[18] = new LDap.SearchValue(new string[] { "mobile" }, user.Mobile);
+            pk[19] = new LDap.SearchValue(new string[] { "initials" }, ((!string.IsNullOrEmpty(user.FirstName) && !string.IsNullOrEmpty(user.LastName)) ? (user.FirstName.Substring(0, 1) + user.LastName.Substring(0, 1)) : string.Empty));
             //--- ("o", "r2"); //unused
             //--- ("legacyExcangeDN", "r3"); //i have no need (don't know whats for)
             //--- ("physicalDeliveryOfficeName", "r4"); //i have no need
@@ -773,46 +854,23 @@ namespace Libs.LDAP
             return pk;
         }
 
-        private LCore.LdapPacket RespondUserData(LDap.IUserData user, LDap.SearchValue[] pack, int MessageID)
+        private LDap.SearchValue[] GroupPack(LDap.IGroup grp)
+        {
+            LDap.SearchValue[] pk = new LDap.SearchValue[3];
+            pk[0] = new LDap.SearchValue(new string[] { "ou", "organizationalUnitName", "cn", "commonName" }, grp.Name);
+            pk[1] = new LDap.SearchValue(new string[] { "objectclass" }, LDap.Server.GroupAccountClass);
+            pk[2] = new LDap.SearchValue(new string[] { "objectclass" }, "top");
+            return pk;
+        }
+
+        private LCore.LdapPacket RespondCN(string CN, LDap.SearchValue[] pack, int MessageID)
         {
             LCore.LdapAttribute searchResultEntry = new LCore.LdapAttribute(LCore.LdapOperation.SearchResultEntry);
-            searchResultEntry.ChildAttributes.Add(new LCore.LdapAttribute(LCore.UniversalDataType.OctetString, ("cn=" + user.UserName + "," + this._validator.LDAPRoot)));
-            LCore.LdapAttribute partialAttributeList = new LCore.LdapAttribute(LCore.UniversalDataType.Sequence);
-            foreach (LDap.SearchValue pkItem in pack) { foreach (string Key in pkItem.Keys) { this.AddAttribute(partialAttributeList, Key, pkItem.Value); } }
-            searchResultEntry.ChildAttributes.Add(partialAttributeList);
+            searchResultEntry.ChildAttributes.Add(new LCore.LdapAttribute(LCore.UniversalDataType.OctetString, CN));
+            this.BuildPack(searchResultEntry, pack);
             LCore.LdapPacket response = new LCore.LdapPacket(MessageID);
             response.ChildAttributes.Add(searchResultEntry);
             return response;
-        }
-
-        private void ReturnAllUsers(SysSock.NetworkStream stream, int MessageID, int Limit)
-        {
-#if DEBUG
-            Sys.Console.WriteLine(">>>> " + this.LogThread() + "ReturnAllUsers(NetworkStream,int,int) started at " + this.LogDate());
-#endif
-            foreach (LDap.IUserData user in this._validator.ListUsers())
-            {
-                if (Limit > 0)
-                {
-                    using (LCore.LdapPacket pkO = this.RespondUserData(user, this.UserPack(user), MessageID)) { this.WriteAttributes(pkO, stream); }
-                    Limit--;
-                } else { break; }
-            }
-#if DEBUG
-            Sys.Console.WriteLine(">>> " + this.LogThread() + "ReturnAllUsers(NetworkStream,int,int) ended at " + this.LogDate());
-#endif
-        }
-
-        private void ReturnSingleUser(SysSock.NetworkStream stream, int MessageID, string UserName)
-        {
-#if DEBUG
-            Sys.Console.WriteLine(">>>> " + this.LogThread() + "ReturnSingleUser(NetworkStream,int,string) started at " + this.LogDate());
-#endif
-            if (!string.IsNullOrEmpty(UserName))
-            {
-                UserName = UserName.ToLower();
-                foreach (LDap.IUserData user in this._validator.ListUsers()) { if (user.UserName == UserName) { using (LCore.LdapPacket pkO = this.RespondUserData(user, this.UserPack(user), MessageID)) { this.WriteAttributes(pkO, stream); } break; } }
-            }
         }
 
         private void ReturnTrue(SysSock.NetworkStream stream, int MessageID)
@@ -823,13 +881,80 @@ namespace Libs.LDAP
             this.WriteAttributes(pkO, stream);
         }
 
-        private string ExtractUser(string arg)
+        private void ReturnElements(SysSock.NetworkStream stream, int MessageID, int Limit, LDap.IGroup Source, LCore.Scope Scope)
         {
+#if DEBUG
+            Sys.Console.WriteLine(">>>> " + this.LogThread() + "ReturnAllUsers(NetworkStream,int,int) started at " + this.LogDate());
+#endif
+            foreach (LDap.IGroup grp in Source.ListGroups()) //'... appliy scope to list subgroups (don't know how yet)
+            {
+                if (Limit > 0)
+                {
+                    using (LCore.LdapPacket pkO = this.RespondCN(this.BuildCN(grp, Source), this.GroupPack(grp), MessageID)) { this.WriteAttributes(pkO, stream); }
+                    Limit--;
+                } else { break; }
+            }
+            foreach (LDap.IUserData user in Source.ListUsers())
+            {
+                if (Limit > 0)
+                {
+                    using (LCore.LdapPacket pkO = this.RespondCN(this.BuildCN(user, Source), this.UserPack(user), MessageID)) { this.WriteAttributes(pkO, stream); }
+                    Limit--;
+                }
+                else { break; }
+            }
+#if DEBUG
+            Sys.Console.WriteLine(">>> " + this.LogThread() + "ReturnAllUsers(NetworkStream,int,int) ended at " + this.LogDate());
+#endif
+        }
+
+        private void ReturnSingleElement(SysSock.NetworkStream stream, int MessageID, ref string Name, LDap.IGroup Source, LCore.Scope Scope)
+        {
+#if DEBUG
+            Sys.Console.WriteLine(">>>> " + this.LogThread() + "ReturnSingleUser(NetworkStream,int,string,bool) started at " + this.LogDate());
+#endif
+            if (!string.IsNullOrEmpty(Name))
+            {
+                Name = Name.ToLower();
+                foreach (LDap.IUserData user in Source.ListUsers())
+                {
+                    if (user.Name == Name)
+                    {
+                        using (LCore.LdapPacket pkO = this.RespondCN(this.BuildCN(user, Source), this.UserPack(user), MessageID)) { this.WriteAttributes(pkO, stream); }
+                        return;
+                    }
+                }
+                LDap.IGroup grp = this.FindGroup(Name, Source, Scope);
+                if (grp != null) { using (LCore.LdapPacket pkO = this.RespondCN(this.BuildCN(grp, Source), this.GroupPack(grp), MessageID)) { this.WriteAttributes(pkO, stream); } }
+            }
+        }
+
+        private string ExtractUser(string arg, ref string BindUR, out LDap.IGroup Source)
+        {
+            Source = this._validator;
             if (!string.IsNullOrEmpty(arg))
             {
-                arg = arg.Trim().Replace(this._validator.LDAPRoot, string.Empty).Trim();
-                if (arg.EndsWith(",")) { arg = arg.Substring(0, (arg.Length - 1)); }
-                if (arg.StartsWith("cn=")) { arg = arg.Substring(3); }
+                if (arg == BindUR) { arg = string.Empty; }
+                else
+                {
+                    arg = arg.Trim().Replace(BindUR, string.Empty).Trim();
+                    if (arg.EndsWith(",")) { arg = arg.Substring(0, (arg.Length - 1)); }
+                    if (arg.StartsWith("cn=")) { arg = arg.Substring(3); }
+                    int cIDX = arg.LastIndexOf(',');
+                    if (cIDX > -1)
+                    {
+                        string gp = arg.Substring(cIDX + 1).ToLower();
+                        arg = arg.Substring(0, cIDX);
+                        cIDX = gp.IndexOf('=');
+                        if (cIDX != -1) { gp = gp.Substring(cIDX + 1); }
+                        Source = this.FindGroup(gp, Source, LCore.Scope.baseObject); //'... see this later on about Scope use
+                        if (Source == null)
+                        {
+                            Source = this._validator;
+                            arg = string.Empty;
+                        }
+                    }
+                }
             }
             return arg;
         }
@@ -881,44 +1006,60 @@ namespace Libs.LDAP
             return args;
         }
 
-        private void ReturnUsers(SysSock.NetworkStream stream, int MessageID, int Limit, LDap.SearchCondition args)
+        private bool Matched(LDap.SearchValue[] pack, LDap.SearchCondition args)
+        {
+            int mcount = -1;
+            switch (args.Filter)
+            {
+                case LCore.LdapFilterChoice.or:
+                    foreach (LDap.SearchKey key in args.Keys)
+                    {
+                        mcount = this.Matched(pack, key);
+                        if (mcount > 0) { return true; }
+                    }
+                    break;
+                case LCore.LdapFilterChoice.and:
+                    bool Matched = true;
+                    if (args.Keys.Count == pack.Length) //Since all must match anyway
+                    {
+                        Matched = true;
+                        foreach (LDap.SearchKey key in args.Keys)
+                        {
+                            mcount = this.Matched(pack, key);
+                            if (mcount != 2) { Matched = false; break; }
+                        }
+                    }
+                    return Matched;
+            }
+            return false;
+        }
+
+        private void ReturnMatchs(SysSock.NetworkStream stream, int MessageID, int Limit, LDap.SearchCondition args, LDap.IGroup Source)
         {
 #if DEBUG
             Sys.Console.WriteLine(">>> " + this.LogThread() + "ReturnUsers(NetworkStream,int,int,SearchCondition) started at " + this.LogDate());
 #endif
             LDap.SearchValue[] pack = null;
-            bool Matched = false;
-            int mcount = -1;
-            foreach (LDap.IUserData user in this._validator.ListUsers())
+            foreach (LDap.IGroup grp in Source.ListGroups())
             {
-                Matched = false;
+                if (Limit > 0)
+                {
+                    pack = this.GroupPack(grp);
+                    if (this.Matched(pack, args))
+                    {
+                        using (LCore.LdapPacket pkO = this.RespondCN(this.BuildCN(grp, Source), pack, MessageID)) { this.WriteAttributes(pkO, stream); }
+                        Limit--;
+                    }
+                } else { break; }
+            }
+            foreach (LDap.IUserData user in Source.ListUsers())
+            {
                 if (Limit > 0)
                 {
                     pack = this.UserPack(user);
-                    switch (args.Filter)
+                    if (this.Matched(pack, args))
                     {
-                        case LCore.LdapFilterChoice.or:
-                            foreach (LDap.SearchKey key in args.Keys)
-                            {
-                                mcount = this.Matched(pack, key);
-                                if (mcount > 0) { Matched = true; break; }
-                            }
-                            break;
-                        case LCore.LdapFilterChoice.and:
-                            if (args.Keys.Count == pack.Length) //Since all must match anyway
-                            {
-                                Matched = true;
-                                foreach (LDap.SearchKey key in args.Keys)
-                                {
-                                    mcount = this.Matched(pack, key);
-                                    if (mcount != 2) { Matched = false; break; }
-                                }
-                            }
-                            break;
-                    }
-                    if (Matched)
-                    {
-                        using (LCore.LdapPacket pkO = this.RespondUserData(user, pack, MessageID)) { this.WriteAttributes(pkO, stream); }
+                        using (LCore.LdapPacket pkO = this.RespondCN(this.BuildCN(user, Source), pack, MessageID)) { this.WriteAttributes(pkO, stream); }
                         Limit--;
                     }
                 } else { break; }
@@ -928,35 +1069,82 @@ namespace Libs.LDAP
 #endif
         }
 
+        private void ReturnHello(SysSock.NetworkStream stream, int MessageID, LCore.LdapPacket responsePacket, int Limit, LDap.IGroup Source)
+        {
+#if DEBUG
+            Sys.Console.WriteLine(">>> " + this.LogThread() + "ReturnHello(NetworkStream,int,LdapPacket,int) started at " + this.LogDate());
+#endif
+            LDap.SearchValue[] pack = new LDap.SearchValue[5];
+            pack[0] = new LDap.SearchValue("objectclass", "top");
+            pack[1] = new LDap.SearchValue("objectclass", "dcObject");
+            pack[2] = new LDap.SearchValue("objectclass", "organization");
+            pack[3] = new LDap.SearchValue("o", (this._validator.Domain.NormalizedDC + "." + this._validator.Domain.DomainCommon));
+            pack[4] = new LDap.SearchValue("dc", this._validator.Domain.NormalizedDC);
+            this.WriteAttributes(this.RespondCN(this._validator.Domain.ToString(), pack, MessageID), stream);
+            this.ReturnElements(stream, MessageID, Limit, Source, LCore.Scope.baseObject);
+#if DEBUG
+            Sys.Console.WriteLine(">>> " + this.LogThread() + "ReturnHello(NetworkStream,int,LdapPacket,int) ended at " + this.LogDate());
+#endif
+        }
+
         private void HandleSearchRequest(SysSock.NetworkStream stream, LCore.LdapPacket requestPacket, bool IsAdmin)
         {
 #if DEBUG
             Sys.Console.WriteLine(">>> " + this.LogThread() + "HandleSearchRequest(NetworkStream,LdapPacket,bool) started at " + this.LogDate());
+            this.LogPacket(requestPacket, 0);
 #endif
-            LCore.LdapAttribute searchRequest = LCore.Utils.SingleOrDefault<LCore.LdapAttribute>(requestPacket.ChildAttributes, o => { return o.LdapOperation == LCore.LdapOperation.SearchRequest; });
+            LCore.LdapAttribute searchRequest = LCore.Utils.SingleOrDefault<LCore.LdapAttribute>(requestPacket.ChildAttributes, this.IsSearch);
             LCore.LdapPacket responsePacket = new LCore.LdapPacket(requestPacket.MessageId);
-            if (searchRequest == null) { responsePacket.ChildAttributes.Add(new LCore.LdapResultAttribute(LCore.LdapOperation.SearchResultDone, LCore.LdapResult.compareFalse)); }
+            if (searchRequest == null || searchRequest.ChildAttributes.Count < 7) { responsePacket.ChildAttributes.Add(new LCore.LdapResultAttribute(LCore.LdapOperation.SearchResultDone, LCore.LdapResult.compareFalse)); }
             else
             {
+                string arg = string.Empty;
+                LCore.Scope scope = LCore.Scope.baseObject;
+                try
+                {
+                    if (searchRequest.ChildAttributes[1].DataType == LCore.UniversalDataType.Integer) { scope = (LCore.Scope)searchRequest.ChildAttributes[1].GetValue<int>(); }
+                    else
+                    {
+                        switch (searchRequest.ChildAttributes[1].Value[0])
+                        {
+                            case 1: scope = LCore.Scope.singleLevel; break;
+                            case 2: scope = LCore.Scope.wholeSubtree; break;
+                            default: scope = LCore.Scope.baseObject; break;
+                        }
+                    }
+                } catch { /* NOTHING */ }
                 int limit = searchRequest.ChildAttributes[3].GetValue<int>();
-                if (limit == 0) { limit = 999; } //max on outlook | target client
-                string arg = searchRequest.ChildAttributes[0].GetValue<string>();
+                if (limit == 0) { limit = 999; } //max on outlook/thunderbird | target clients
+                arg = searchRequest.ChildAttributes[0].GetValue<string>();
+                if (arg != null) { arg = arg.ToLower(); }
                 LCore.LdapAttribute filter = searchRequest.ChildAttributes[6];
                 LCore.LdapFilterChoice filterMode = (LCore.LdapFilterChoice)filter.ContextType;
-                if (arg != null && arg.Contains(this._validator.LDAPRoot))
+                string BindUR = this._validator.Domain.ToString();
+                if (arg != null && arg.Contains(BindUR))
                 {
-                    arg = this.ExtractUser(arg);
+                    LDap.IGroup Source = null;
+                    arg = this.ExtractUser(arg, ref BindUR, out Source);
                     switch (filterMode)
                     {
                         case LCore.LdapFilterChoice.equalityMatch:
-                        case LCore.LdapFilterChoice.present: this.ReturnSingleUser(stream, requestPacket.MessageId, arg); break;
+                        case LCore.LdapFilterChoice.present:
+                            if (arg == null || arg == string.Empty)
+                            {
+                                if (Source == this._validator) { this.ReturnHello(stream, requestPacket.MessageId, responsePacket, limit, Source); }
+                                else
+                                {
+                                    arg = filter.GetValue<string>();
+                                    this.ReturnSingleElement(stream, requestPacket.MessageId, ref arg, Source, scope);
+                                }
+                            } else if (scope == LCore.Scope.baseObject) { this.ReturnSingleElement(stream, requestPacket.MessageId, ref arg, Source, scope); }
+                            break;
                         case LCore.LdapFilterChoice.and:
                         case LCore.LdapFilterChoice.or:
-                            if (string.IsNullOrEmpty(arg) || this.IsValidType(arg))
+                            if (string.IsNullOrEmpty(arg) || this.IsValidType(ref arg))
                             {
                                 LDap.SearchCondition args = this.GetSearchOptions(filter);
-                                if (args.Keys.Count == 0 || args.Keys[0].Key == "*") { this.ReturnAllUsers(stream, requestPacket.MessageId, limit); } else { this.ReturnUsers(stream, requestPacket.MessageId, limit, args); }
-                            } else { this.ReturnSingleUser(stream, requestPacket.MessageId, arg); }
+                                if (args.Keys.Count == 0 || args.Keys[0].Key == "*") { this.ReturnElements(stream, requestPacket.MessageId, limit, Source, scope); } else { this.ReturnMatchs(stream, requestPacket.MessageId, limit, args, Source); }
+                            } else { this.ReturnSingleElement(stream, requestPacket.MessageId, ref arg, Source, scope); }
                             break;
                     }
                 }
@@ -967,7 +1155,7 @@ namespace Libs.LDAP
                     {
                         switch (filterMode)
                         {
-                            case LCore.LdapFilterChoice.present: if (this.IsValidType(arg)) { this.ReturnTrue(stream, requestPacket.MessageId); } break;
+                            case LCore.LdapFilterChoice.present: if (this.IsValidType(ref arg)) { this.ReturnTrue(stream, requestPacket.MessageId); } break;
                             default: break; //NOTHING YET!
                         }
                     }
@@ -996,10 +1184,12 @@ namespace Libs.LDAP
             }
             else
             {
-                string username = this.ExtractUser(bindrequest.ChildAttributes[1].GetValue<string>());
-                string password = bindrequest.ChildAttributes[2].GetValue<string>();
+                LDap.IGroup Source = null;
+                string AUX = this._validator.Domain.ToString();
+                string username = this.ExtractUser(bindrequest.ChildAttributes[1].GetValue<string>(), ref AUX, out Source);
+                AUX = bindrequest.ChildAttributes[2].GetValue<string>();
                 LCore.LdapResult response = LCore.LdapResult.invalidCredentials;
-                if (this._validator.Validate(username, password, out IsAdmin)) { response = LCore.LdapResult.success; }
+                if (this._validator.Validate(username, AUX, out IsAdmin)) { response = LCore.LdapResult.success; }
                 LCore.LdapPacket responsePacket = new LCore.LdapPacket(requestPacket.MessageId);
                 responsePacket.ChildAttributes.Add(new LCore.LdapResultAttribute(LCore.LdapOperation.BindResponse, response));
                 this.WriteAttributes(responsePacket, stream);
@@ -1036,11 +1226,21 @@ namespace Libs.LDAP
                     loopCount++;
                     Sys.Console.WriteLine(">>> " + this.LogThread() + "HandleClient(TcpClient), PacketParsed (" + loopCount.ToString() + ") at " + this.LogDate());
 #endif
-                    if (LCore.Utils.Any<LCore.LdapAttribute>(requestPacket.ChildAttributes, this.IsBind)) { isBound = this.HandleBindRequest(stream, requestPacket, out IsAdmin); }
-                    if (isBound && LCore.Utils.Any<LCore.LdapAttribute>(requestPacket.ChildAttributes, this.IsSearch))
+                    if (LCore.Utils.Any<LCore.LdapAttribute>(requestPacket.ChildAttributes, this.IsDisconnect))
                     {
-                        nonSearch = false;
-                        this.HandleSearchRequest(stream, requestPacket, IsAdmin);
+#if DEBUG
+                        Sys.Console.WriteLine(">>> " + this.LogThread() + "HandleClient(TcpClient), Abandon/Unbind Request received (" + loopCount.ToString() + ") at " + this.LogDate());
+#endif
+                        break;
+                    }
+                    else
+                    {
+                        if (LCore.Utils.Any<LCore.LdapAttribute>(requestPacket.ChildAttributes, this.IsBind)) { isBound = this.HandleBindRequest(stream, requestPacket, out IsAdmin); }
+                        if (isBound && LCore.Utils.Any<LCore.LdapAttribute>(requestPacket.ChildAttributes, this.IsSearch))
+                        {
+                            nonSearch = false;
+                            this.HandleSearchRequest(stream, requestPacket, IsAdmin);
+                        }
                     }
                 }
 #if DEBUG
@@ -1057,13 +1257,6 @@ namespace Libs.LDAP
 #else
             } catch { /* NOTHING */ }
 #endif
-        }
-
-        void Sys.IDisposable.Dispose()
-        {
-            this.Stop();
-            this._server = null;
-            this._running = false;
         }
 
         private void OnClientConnect(Sys.IAsyncResult asyn)
