@@ -7,7 +7,13 @@ This project is a "fork" of vForteli's "Flexinets.Ldap.Server" and "Flexinets.Ld
 **Thanks to constant help from it's original developer i'm at the stage where both Microsoft Outlook and Mozilla Thunderbird runs smoothly with it as an Address book provider**
 
 ---
-Edit: 2019-06-04
+Edit: 2019-06-10 **!!**
+
+**Update of 2019-06-10**
+
+All it does is add the groups (Departments) as a list of OrganizationalUnits. It also matchs the Search criteria for those groups, allows (supposebly, don't know for sure yet) you to bind to the root or to the Group, and list it's users only. Provides a better response to Unbind/Disconnect and also to the first Bind request (as happens on the LdapAdmin program).
+
+Problems: It provides the Root data as a SearchResultEntry on the first Bind request, and so, it may cause a infinity of cascades if that node is expanded.
 
 **How To Use It**
 
@@ -17,7 +23,7 @@ In the `Libs.cs` file are the classes that do not require any change whatsoever 
 
 Those classes include all code originated from **vForteli**'s project for the core attributes of the LDAP calls, my modified version of the (LDAP) **Server** class and the base classes for Installing, Starting, Stoping and Uninstalling it (or anything else really) as a Windows Service. **One observation on that note: to do so, you must run the application as an Windows Administrator**.
 
-In the `Sample.cs` file, are the `IUserData` implementation (a simple one), the `ICompany` implementation and the `IDataSource` implementation. All theses classes do is store (User and Company) information and provide it to the server as called upon. The `Service` class is the derivation of the `ServiceInstaller` class (from the `Libs.cs` file, which is an abstract one).
+In the `Sample.cs` file, are the `IUserData` implementation (a simple one), the `IGroup` implementation and the `IDataSource` implementation. All theses classes do is store (User and Group - department) information and provide it to the server as called upon. The `Service` class is the derivation of the `ServiceInstaller` class (from the `Libs.cs` file, which is an abstract one).
 
 ---
 
