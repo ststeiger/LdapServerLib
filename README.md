@@ -52,3 +52,7 @@ Taking Mozilla's Thunderbird as an example, this should be the resulting configu
 And also, the configuration used to connect to Microsoft's Outlook:
 
 <img src="https://github.com/Sammuel-Miranda/LdapServerLib/blob/master/Outlook.png" alt="Example" title="Example" style="max-width:100%;">
+
+For testing purposes, i also configured a different client (not an E-mail one), using the LdapAdmin (from <a href="http://www.ldapadmin.org/download/">LdapAdmin.org</a>). This one also connects and using the search tools it shows the list of users. **However, i verified (connecting to a differente server) that it does not behave the same. Connecting to another server, it lists all objects when connected, without the need to search**. Still serves the original purpuse of this project, but i'd like to improve it to behave as it should.
+
+<img src="https://github.com/Sammuel-Miranda/LdapServerLib/blob/master/LdapAdmin.png" alt="Example" title="Example" style="max-width:100%;">
