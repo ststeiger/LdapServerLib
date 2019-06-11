@@ -7,7 +7,11 @@ This project is a "fork" of vForteli's "Flexinets.Ldap.Server" and "Flexinets.Ld
 **Thanks to constant help from it's original developer i'm at the stage where both Microsoft Outlook and Mozilla Thunderbird runs smoothly with it as an Address book provider**
 
 ---
-Edit: 2019-06-10 **!!**
+Edit: 2019-06-11 **!!**
+
+**Update of 2019-06-11**
+
+As of today, the grouping works as intended. It allows for grouping and sub-grouping with any level. Search may be tricky since there's not difference still as for SingleLevel/FullSubTree searches (they are all treated as SingleLevel). Also, it's still returning the root element as a result, so the tree is cascatable for infinity.
 
 **Update of 2019-06-10**
 
