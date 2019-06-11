@@ -38,17 +38,21 @@ namespace Sample
 
     internal class GroupData : LDap.IGroup //testing purposes only
     {
-        private LSam.TestSource source;
+        private LSam.TestSource RootSource;
         private string nm;
-        SysClG.IEnumerable<LDap.IGroup> LDap.IDataList.ListGroups() { return null; /* if Subgroups are used, than make a list of groups in this class and add users to it */ }
-        SysClG.IEnumerable<LDap.IUserData> LDap.IDataList.ListUsers() { foreach (LDap.IUserData user in this.source.users) { if (user.Department == this) { yield return user; } } }
-        string LDap.IGroup.BuildCN() { return "ou=" + this.nm + "," + (this.source as LDap.IGroup).BuildCN(); }
+        public LDap.IGroup Parent { get; protected set; }
+        public SysClG.List<LSam.GroupData> Subgroups { get; protected set; }
         public string Name { get { return this.nm; } set { this.nm = (value == null ? "n" : value.ToLower()); } }
+        SysClG.IEnumerable<LDap.IGroup> LDap.IDataList.ListGroups() { foreach (LSam.GroupData grp in this.Subgroups) { yield return grp; } }
+        SysClG.IEnumerable<LDap.IUserData> LDap.IDataList.ListUsers() { foreach (LDap.IUserData user in this.RootSource.users) { if (user.Department == this) { yield return user; } } }
+        string LDap.IGroup.BuildCN() { return "ou=" + this.nm + "," + (this.Parent == null ? (this.RootSource as LDap.IGroup) : this.Parent).BuildCN(); }
 
-        public GroupData(LSam.TestSource source, string Name)
+        public GroupData(LSam.TestSource RootSource, LDap.IGroup Parent, string Name)
         {
-            this.source = source;
+            this.RootSource = RootSource;
+            this.Parent = Parent;
             this.Name = Name;
+            this.Subgroups = new SysClG.List<LSam.GroupData>(1);
         }
     }
 
@@ -83,17 +87,17 @@ namespace Sample
         {
             this.Domain = new LDap.Domain(this) { Company = new LDap.Company() { Name = "Nazarick Inc.", Phone = "+9900900000000", Country = "Baharuth", State = "E-Rantel", City = "Nazarick", PostCode = "12123123", Address = "An Adress of" }, DomainCommon = "Com" };
             this.groups = new SysClG.List<LDap.IGroup>(3);
-            LSam.GroupData gp = new LSam.GroupData(this, "Nazarick Mausoleum");
-            this.groups.Add(gp);
+            LSam.GroupData mGP = new LSam.GroupData(this, null, "Nazarick Mausoleum");
+            this.groups.Add(mGP);
             this.users = new SysClG.List<LDap.IUserData>(4);
-            this.users.Add(new LSam.UserData(1L, "ainz.ooal.gown", "ainzsama@nazarick.com", "Ainz", "Ooal Gown", this.AdminPassword) { Department = gp, Job = "Overlord", Mobile = "+9900900000099" });
-            gp = new LSam.GroupData(this, "Base Floors");
-            this.groups.Add(gp);
-            this.users.Add(new LSam.UserData(2L, "shalltear.bff", "shalltear@nazarick.com", "Shalltear", "Bloodfallen", this.AdminPassword) { Department = gp, Job = "Guardian" });
-            gp = new LSam.GroupData(this, "Floor 10");
-            this.groups.Add(gp);
-            this.users.Add(new LSam.UserData(3L, "narberal", "narberal@nazarick.com", "Narberal", "Gamma", this.AdminPassword) { Department = gp, Job = "Pleiade" });
-            this.users.Add(new LSam.UserData(4L, "sebas.tian", "sebas@nazarick.com", "Sebas", "Tian", this.AdminPassword) { Department = gp, Job = "Buttler" });
+            this.users.Add(new LSam.UserData(1L, "ainz.ooal.gown", "ainzsama@nazarick.com", "Ainz", "Ooal Gown", this.AdminPassword) { Department = mGP, Job = "Overlord", Mobile = "+9900900000099" });
+            LSam.GroupData sGP = new LSam.GroupData(this, mGP, "Base Floors");
+            mGP.Subgroups.Add(sGP);
+            this.users.Add(new LSam.UserData(2L, "shalltear.bff", "shalltear@nazarick.com", "Shalltear", "Bloodfallen", this.AdminPassword) { Department = sGP, Job = "Guardian" });
+            sGP = new LSam.GroupData(this, mGP, "Floor 10");
+            mGP.Subgroups.Add(sGP);
+            this.users.Add(new LSam.UserData(3L, "narberal", "narberal@nazarick.com", "Narberal", "Gamma", this.AdminPassword) { Department = sGP, Job = "Pleiade" });
+            this.users.Add(new LSam.UserData(4L, "sebas.tian", "sebas@nazarick.com", "Sebas", "Tian", this.AdminPassword) { Department = sGP, Job = "Buttler" });
         }
     }
 
