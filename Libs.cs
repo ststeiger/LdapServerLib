@@ -750,6 +750,7 @@ namespace Libs.LDAP
         private string BuildCN(string AttributeSG, LDap.INamed named, LDap.IGroup Source) { return (AttributeSG + "=" + named.Name + "," + Source.BuildCN()); }
         private void WriteAttributes(byte[] pkB, SysSock.NetworkStream stream) { stream.Write(pkB, 0, pkB.Length); }
         private void WriteAttributes(LCore.LdapAttribute attr, SysSock.NetworkStream stream) { this.WriteAttributes(attr.GetBytes(), stream); }
+        private LDap.IGroup FindGroup(string NormalizedNAME, LDap.IGroup Source) { foreach (LDap.IGroup grp in Source.ListGroups()) { if (grp.Name == NormalizedNAME) { return grp; } } return null; }
 #if DEBUG
         private string LogThread() { return "{Thread;" + Sys.Threading.Thread.CurrentContext.ContextID.ToString() + ";" + Sys.Threading.Thread.CurrentThread.ManagedThreadId.ToString() + "}"; }
         private string LogDate() { return Sys.DateTime.Now.ToString(LServ.ServiceInstaller.LogDateFormat, Sys.Globalization.CultureInfo.InvariantCulture); }
@@ -762,13 +763,7 @@ namespace Libs.LDAP
             if (ident == 0) { Sys.Console.WriteLine("-----------END-----------"); }
         }
 #endif
-        private LDap.IGroup FindGroup(string NormalizedNAME, LDap.IGroup Source)
-        {
-            foreach (LDap.IGroup grp in Source.ListGroups()) { if (grp.Name == NormalizedNAME) { return grp; } }
-            return null;
-        }
-
-        private int Matched(LDap.SearchValue[] pack, LDap.SearchKey key) 
+        private int Matched(LDap.SearchValue[] pack, LDap.SearchKey key)
         {
             LDap.SearchValue comp = this.GetCompare(pack, key);
             if (comp.Keys == null || comp.Keys.Length == 0) { return -1; }
@@ -834,23 +829,17 @@ namespace Libs.LDAP
             pk[6] = new LDap.SearchValue(new string[] { "ou", "department" }, user.Department.Name);
             pk[7] = new LDap.SearchValue(new string[] { "co", "countryname" }, this._source.Domain.Company.Country);
             pk[8] = new LDap.SearchValue(new string[] { "postalAddress", "streetaddress" }, this._source.Domain.Company.Address);
-            pk[9] = new LDap.SearchValue(new string[] { "company", "organizationName" }, this._source.Domain.Company.Name);
+            pk[9] = new LDap.SearchValue(new string[] { "company", "organizationName", "organizationUnitName" }, this._source.Domain.Company.Name);
             pk[10] = new LDap.SearchValue(new string[] { "objectClass" }, LDap.Server.AccountClass);
             pk[11] = new LDap.SearchValue(new string[] { "objectClass" }, LDap.Server.PosixAccountClass);
             pk[12] = new LDap.SearchValue(new string[] { "objectClass" }, "top");
-            pk[13] = new LDap.SearchValue(new string[] { "title" }, user.Job);
+            pk[13] = new LDap.SearchValue(new string[] { "title", "roleOccupant" }, user.Job);
             pk[14] = new LDap.SearchValue(new string[] { "telephoneNumber" }, this._source.Domain.Company.Phone);
             pk[15] = new LDap.SearchValue(new string[] { "l" }, this._source.Domain.Company.City);
             pk[16] = new LDap.SearchValue(new string[] { "st" }, this._source.Domain.Company.State);
             pk[17] = new LDap.SearchValue(new string[] { "postalCode" }, this._source.Domain.Company.PostCode);
             pk[18] = new LDap.SearchValue(new string[] { "mobile" }, user.Mobile);
             pk[19] = new LDap.SearchValue(new string[] { "initials" }, ((!string.IsNullOrEmpty(user.FirstName) && !string.IsNullOrEmpty(user.LastName)) ? (user.FirstName.Substring(0, 1) + user.LastName.Substring(0, 1)) : string.Empty));
-            //--- ("o", "r2"); //unused
-            //--- ("legacyExcangeDN", "r3"); //i have no need (don't know whats for)
-            //--- ("physicalDeliveryOfficeName", "r4"); //i have no need
-            //--- ("secretary", "r5"); //i have no need
-            //--- ("roleOccupant", "r6"); //unused
-            //--- ("organizationUnitName", "r7"); //unused
             return pk;
         }
 
