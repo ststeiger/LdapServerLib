@@ -740,14 +740,14 @@ namespace Libs.LDAP
         private SysSock.TcpListener _server;
         private bool _running;
         bool LServ.IServer.IsStarted { get { return this._running; } }
-        private LDap.IDataSource _validator;
-        public LDap.IDataSource Validator { get { return this._validator; } }
+        private LDap.IDataSource _source;
+        public LDap.IDataSource Source { get { return this._source; } }
         private bool IsValidType(ref string type) { return (type.ToLower() == "objectclass" || type == "top" || type == LDap.Server.AccountClass || type == LDap.Server.PosixAccountClass || type == LDap.Server.GroupAccountClass); }
         private LDap.SearchValue GetCompare(LDap.SearchValue[] pack, LDap.SearchKey key) { foreach (LDap.SearchValue val in pack) { foreach (string valKey in val.Keys) { if (valKey == key.Key) { return val; } } } return default(LDap.SearchValue); }
         private bool IsBind(LCore.LdapAttribute attr) { return (attr.LdapOperation == LCore.LdapOperation.BindRequest); }
         private bool IsSearch(LCore.LdapAttribute attr) { return (attr.LdapOperation == LCore.LdapOperation.SearchRequest); }
         private bool IsDisconnect(LCore.LdapAttribute attr) { return (attr.LdapOperation == LCore.LdapOperation.UnbindRequest || attr.LdapOperation == LCore.LdapOperation.AbandonRequest); }
-        private string BuildCN(LDap.INamed named, LDap.IGroup Source) { return ("cn=" + named.Name + "," + Source.BuildCN()); }
+        private string BuildCN(string AttributeSG, LDap.INamed named, LDap.IGroup Source) { return (AttributeSG + "=" + named.Name + "," + Source.BuildCN()); }
         private void WriteAttributes(byte[] pkB, SysSock.NetworkStream stream) { stream.Write(pkB, 0, pkB.Length); }
         private void WriteAttributes(LCore.LdapAttribute attr, SysSock.NetworkStream stream) { this.WriteAttributes(attr.GetBytes(), stream); }
 #if DEBUG
@@ -762,13 +762,13 @@ namespace Libs.LDAP
             if (ident == 0) { Sys.Console.WriteLine("-----------END-----------"); }
         }
 #endif
-        private LDap.IGroup FindGroup(string NormalizedNAME, LDap.IGroup Source, LCore.Scope Scope) //'... use Scope here as well
+        private LDap.IGroup FindGroup(string NormalizedNAME, LDap.IGroup Source)
         {
             foreach (LDap.IGroup grp in Source.ListGroups()) { if (grp.Name == NormalizedNAME) { return grp; } }
             return null;
         }
 
-        private int Matched(LDap.SearchValue[] pack, LDap.SearchKey key)
+        private int Matched(LDap.SearchValue[] pack, LDap.SearchKey key) 
         {
             LDap.SearchValue comp = this.GetCompare(pack, key);
             if (comp.Keys == null || comp.Keys.Length == 0) { return -1; }
@@ -832,17 +832,17 @@ namespace Libs.LDAP
             pk[4] = new LDap.SearchValue(new string[] { "givenName" }, user.FirstName);
             pk[5] = new LDap.SearchValue(new string[] { "sn", "surname" }, user.LastName);
             pk[6] = new LDap.SearchValue(new string[] { "ou", "department" }, user.Department.Name);
-            pk[7] = new LDap.SearchValue(new string[] { "co", "countryname" }, this._validator.Domain.Company.Country);
-            pk[8] = new LDap.SearchValue(new string[] { "postalAddress", "streetaddress" }, this._validator.Domain.Company.Address);
-            pk[9] = new LDap.SearchValue(new string[] { "company", "organizationName" }, this._validator.Domain.Company.Name);
+            pk[7] = new LDap.SearchValue(new string[] { "co", "countryname" }, this._source.Domain.Company.Country);
+            pk[8] = new LDap.SearchValue(new string[] { "postalAddress", "streetaddress" }, this._source.Domain.Company.Address);
+            pk[9] = new LDap.SearchValue(new string[] { "company", "organizationName" }, this._source.Domain.Company.Name);
             pk[10] = new LDap.SearchValue(new string[] { "objectClass" }, LDap.Server.AccountClass);
             pk[11] = new LDap.SearchValue(new string[] { "objectClass" }, LDap.Server.PosixAccountClass);
             pk[12] = new LDap.SearchValue(new string[] { "objectClass" }, "top");
             pk[13] = new LDap.SearchValue(new string[] { "title" }, user.Job);
-            pk[14] = new LDap.SearchValue(new string[] { "telephoneNumber" }, this._validator.Domain.Company.Phone);
-            pk[15] = new LDap.SearchValue(new string[] { "l" }, this._validator.Domain.Company.City);
-            pk[16] = new LDap.SearchValue(new string[] { "st" }, this._validator.Domain.Company.State);
-            pk[17] = new LDap.SearchValue(new string[] { "postalCode" }, this._validator.Domain.Company.PostCode);
+            pk[14] = new LDap.SearchValue(new string[] { "telephoneNumber" }, this._source.Domain.Company.Phone);
+            pk[15] = new LDap.SearchValue(new string[] { "l" }, this._source.Domain.Company.City);
+            pk[16] = new LDap.SearchValue(new string[] { "st" }, this._source.Domain.Company.State);
+            pk[17] = new LDap.SearchValue(new string[] { "postalCode" }, this._source.Domain.Company.PostCode);
             pk[18] = new LDap.SearchValue(new string[] { "mobile" }, user.Mobile);
             pk[19] = new LDap.SearchValue(new string[] { "initials" }, ((!string.IsNullOrEmpty(user.FirstName) && !string.IsNullOrEmpty(user.LastName)) ? (user.FirstName.Substring(0, 1) + user.LastName.Substring(0, 1)) : string.Empty));
             //--- ("o", "r2"); //unused
@@ -890,7 +890,7 @@ namespace Libs.LDAP
             {
                 if (Limit > 0)
                 {
-                    using (LCore.LdapPacket pkO = this.RespondCN(this.BuildCN(grp, Source), this.GroupPack(grp), MessageID)) { this.WriteAttributes(pkO, stream); }
+                    using (LCore.LdapPacket pkO = this.RespondCN(this.BuildCN("ou", grp, Source), this.GroupPack(grp), MessageID)) { this.WriteAttributes(pkO, stream); }
                     Limit--;
                 } else { break; }
             }
@@ -898,17 +898,16 @@ namespace Libs.LDAP
             {
                 if (Limit > 0)
                 {
-                    using (LCore.LdapPacket pkO = this.RespondCN(this.BuildCN(user, Source), this.UserPack(user), MessageID)) { this.WriteAttributes(pkO, stream); }
+                    using (LCore.LdapPacket pkO = this.RespondCN(this.BuildCN("cn", user, Source), this.UserPack(user), MessageID)) { this.WriteAttributes(pkO, stream); }
                     Limit--;
-                }
-                else { break; }
+                } else { break; }
             }
 #if DEBUG
             Sys.Console.WriteLine(">>> " + this.LogThread() + "ReturnAllUsers(NetworkStream,int,int) ended at " + this.LogDate());
 #endif
         }
 
-        private void ReturnSingleElement(SysSock.NetworkStream stream, int MessageID, ref string Name, LDap.IGroup Source, LCore.Scope Scope)
+        private void ReturnSingleElement(SysSock.NetworkStream stream, int MessageID, ref string Name, LDap.IGroup Source, LCore.Scope Scope, bool IsGroup)
         {
 #if DEBUG
             Sys.Console.WriteLine(">>>> " + this.LogThread() + "ReturnSingleUser(NetworkStream,int,string,bool) started at " + this.LogDate());
@@ -916,44 +915,45 @@ namespace Libs.LDAP
             if (!string.IsNullOrEmpty(Name))
             {
                 Name = Name.ToLower();
-                foreach (LDap.IUserData user in Source.ListUsers())
+                if (IsGroup)
                 {
-                    if (user.Name == Name)
-                    {
-                        using (LCore.LdapPacket pkO = this.RespondCN(this.BuildCN(user, Source), this.UserPack(user), MessageID)) { this.WriteAttributes(pkO, stream); }
-                        return;
-                    }
-                }
-                LDap.IGroup grp = this.FindGroup(Name, Source, Scope);
-                if (grp != null) { using (LCore.LdapPacket pkO = this.RespondCN(this.BuildCN(grp, Source), this.GroupPack(grp), MessageID)) { this.WriteAttributes(pkO, stream); } }
+                    LDap.IGroup grp = this.FindGroup(Name, Source);
+                    if (grp != null) { using (LCore.LdapPacket pkO = this.RespondCN(this.BuildCN("ou", grp, Source), this.GroupPack(grp), MessageID)) { this.WriteAttributes(pkO, stream); } }
+                } else { foreach (LDap.IUserData user in Source.ListUsers()) { if (user.Name == Name) { using (LCore.LdapPacket pkO = this.RespondCN(this.BuildCN("cn", user, Source), this.UserPack(user), MessageID)) { this.WriteAttributes(pkO, stream); } } } }
             }
         }
 
-        private string ExtractUser(string arg, ref string BindUR, out LDap.IGroup Source)
+        private string ExtractUser(string arg, ref string BindUR, out LDap.IGroup Source, out bool IsGroup)
         {
-            Source = this._validator;
+            Source = this._source;
+            IsGroup = false;
             if (!string.IsNullOrEmpty(arg))
             {
                 if (arg == BindUR) { arg = string.Empty; }
                 else
                 {
-                    arg = arg.Trim().Replace(BindUR, string.Empty).Trim();
+                    arg = arg.Trim().Replace(BindUR, string.Empty).ToLower();
                     if (arg.EndsWith(",")) { arg = arg.Substring(0, (arg.Length - 1)); }
-                    if (arg.StartsWith("cn=")) { arg = arg.Substring(3); }
+                    if (arg.StartsWith("cn=") || arg.StartsWith("ou=") || arg.StartsWith("id=")) { arg = arg.Substring(3); } else if (arg.StartsWith("uid=")) { arg = arg.Substring(4); }
                     int cIDX = arg.LastIndexOf(',');
-                    if (cIDX > -1)
+                    if (cIDX != -1)
                     {
-                        string gp = arg.Substring(cIDX + 1).ToLower();
-                        arg = arg.Substring(0, cIDX);
-                        cIDX = gp.IndexOf('=');
-                        if (cIDX != -1) { gp = gp.Substring(cIDX + 1); }
-                        Source = this.FindGroup(gp, Source, LCore.Scope.baseObject); //'... see this later on about Scope use
-                        if (Source == null)
+                        string AUX = string.Empty;
+                        while (cIDX != -1)
                         {
-                            Source = this._validator;
-                            arg = string.Empty;
+                            AUX = arg.Substring(cIDX + 1);
+                            arg = arg.Substring(0, cIDX);
+                            if (AUX.StartsWith("cn=") || AUX.StartsWith("ou=") || AUX.StartsWith("id=")) { AUX = AUX.Substring(3); } else if (AUX.StartsWith("uid=")) { AUX = AUX.Substring(4); }
+                            Source = this.FindGroup(AUX, Source);
+                            if (Source == null) //FAIL
+                            {
+                                Source = this._source;
+                                arg = string.Empty;
+                                break;
+                            } else { cIDX = arg.LastIndexOf(','); }
                         }
                     }
+                    if (!string.IsNullOrEmpty(arg)) { IsGroup = (this.FindGroup(arg, Source) != null); }
                 }
             }
             return arg;
@@ -1047,7 +1047,7 @@ namespace Libs.LDAP
                     pack = this.GroupPack(grp);
                     if (this.Matched(pack, args))
                     {
-                        using (LCore.LdapPacket pkO = this.RespondCN(this.BuildCN(grp, Source), pack, MessageID)) { this.WriteAttributes(pkO, stream); }
+                        using (LCore.LdapPacket pkO = this.RespondCN(this.BuildCN("ou", grp, Source), pack, MessageID)) { this.WriteAttributes(pkO, stream); }
                         Limit--;
                     }
                 } else { break; }
@@ -1059,7 +1059,7 @@ namespace Libs.LDAP
                     pack = this.UserPack(user);
                     if (this.Matched(pack, args))
                     {
-                        using (LCore.LdapPacket pkO = this.RespondCN(this.BuildCN(user, Source), pack, MessageID)) { this.WriteAttributes(pkO, stream); }
+                        using (LCore.LdapPacket pkO = this.RespondCN(this.BuildCN("cn", user, Source), pack, MessageID)) { this.WriteAttributes(pkO, stream); }
                         Limit--;
                     }
                 } else { break; }
@@ -1078,9 +1078,9 @@ namespace Libs.LDAP
             pack[0] = new LDap.SearchValue("objectclass", "top");
             pack[1] = new LDap.SearchValue("objectclass", "dcObject");
             pack[2] = new LDap.SearchValue("objectclass", "organization");
-            pack[3] = new LDap.SearchValue("o", (this._validator.Domain.NormalizedDC + "." + this._validator.Domain.DomainCommon));
-            pack[4] = new LDap.SearchValue("dc", this._validator.Domain.NormalizedDC);
-            this.WriteAttributes(this.RespondCN(this._validator.Domain.ToString(), pack, MessageID), stream);
+            pack[3] = new LDap.SearchValue("o", (this._source.Domain.NormalizedDC + "." + this._source.Domain.DomainCommon));
+            pack[4] = new LDap.SearchValue("dc", this._source.Domain.NormalizedDC);
+            this.WriteAttributes(this.RespondCN(this._source.Domain.ToString(), pack, MessageID), stream);
             this.ReturnElements(stream, MessageID, Limit, Source, LCore.Scope.baseObject);
 #if DEBUG
             Sys.Console.WriteLine(">>> " + this.LogThread() + "ReturnHello(NetworkStream,int,LdapPacket,int) ended at " + this.LogDate());
@@ -1119,24 +1119,26 @@ namespace Libs.LDAP
                 if (arg != null) { arg = arg.ToLower(); }
                 LCore.LdapAttribute filter = searchRequest.ChildAttributes[6];
                 LCore.LdapFilterChoice filterMode = (LCore.LdapFilterChoice)filter.ContextType;
-                string BindUR = this._validator.Domain.ToString();
+                string BindUR = this._source.Domain.ToString();
                 if (arg != null && arg.Contains(BindUR))
                 {
                     LDap.IGroup Source = null;
-                    arg = this.ExtractUser(arg, ref BindUR, out Source);
+                    bool IsGroup = false;
+                    arg = this.ExtractUser(arg, ref BindUR, out Source, out IsGroup);
                     switch (filterMode)
                     {
                         case LCore.LdapFilterChoice.equalityMatch:
                         case LCore.LdapFilterChoice.present:
                             if (arg == null || arg == string.Empty)
                             {
-                                if (Source == this._validator) { this.ReturnHello(stream, requestPacket.MessageId, responsePacket, limit, Source); }
+                                if (Source == this._source) { this.ReturnHello(stream, requestPacket.MessageId, responsePacket, limit, Source); }
                                 else
                                 {
                                     arg = filter.GetValue<string>();
-                                    this.ReturnSingleElement(stream, requestPacket.MessageId, ref arg, Source, scope);
+                                    this.ReturnSingleElement(stream, requestPacket.MessageId, ref arg, Source, scope, IsGroup);
                                 }
-                            } else if (scope == LCore.Scope.baseObject) { this.ReturnSingleElement(stream, requestPacket.MessageId, ref arg, Source, scope); }
+                            } else if (scope == LCore.Scope.baseObject) { this.ReturnSingleElement(stream, requestPacket.MessageId, ref arg, Source, scope, IsGroup); }
+                            else if (IsGroup) { this.ReturnElements(stream, requestPacket.MessageId, limit, this.FindGroup(arg, Source), scope); }
                             break;
                         case LCore.LdapFilterChoice.and:
                         case LCore.LdapFilterChoice.or:
@@ -1144,7 +1146,7 @@ namespace Libs.LDAP
                             {
                                 LDap.SearchCondition args = this.GetSearchOptions(filter);
                                 if (args.Keys.Count == 0 || args.Keys[0].Key == "*") { this.ReturnElements(stream, requestPacket.MessageId, limit, Source, scope); } else { this.ReturnMatchs(stream, requestPacket.MessageId, limit, args, Source); }
-                            } else { this.ReturnSingleElement(stream, requestPacket.MessageId, ref arg, Source, scope); }
+                            } else { this.ReturnSingleElement(stream, requestPacket.MessageId, ref arg, Source, scope, IsGroup); }
                             break;
                     }
                 }
@@ -1185,11 +1187,15 @@ namespace Libs.LDAP
             else
             {
                 LDap.IGroup Source = null;
-                string AUX = this._validator.Domain.ToString();
-                string username = this.ExtractUser(bindrequest.ChildAttributes[1].GetValue<string>(), ref AUX, out Source);
-                AUX = bindrequest.ChildAttributes[2].GetValue<string>();
+                string AUX = this._source.Domain.ToString();
+                bool IsGroup = false;
+                string username = this.ExtractUser(bindrequest.ChildAttributes[1].GetValue<string>(), ref AUX, out Source, out IsGroup);
                 LCore.LdapResult response = LCore.LdapResult.invalidCredentials;
-                if (this._validator.Validate(username, AUX, out IsAdmin)) { response = LCore.LdapResult.success; }
+                if (!IsGroup) //Groups do not login
+                {
+                    AUX = bindrequest.ChildAttributes[2].GetValue<string>();
+                    if (this._source.Validate(username, AUX, out IsAdmin)) { response = LCore.LdapResult.success; }
+                }
                 LCore.LdapPacket responsePacket = new LCore.LdapPacket(requestPacket.MessageId);
                 responsePacket.ChildAttributes.Add(new LCore.LdapResultAttribute(LCore.LdapOperation.BindResponse, response));
                 this.WriteAttributes(responsePacket, stream);
@@ -1276,8 +1282,8 @@ namespace Libs.LDAP
         }
         
         protected Server(Sys.Net.IPEndPoint localEndpoint) { this._server = new SysSock.TcpListener(localEndpoint); }
-        public Server(LDap.IDataSource Validator, Sys.Net.IPEndPoint localEndpoint) : this(localEndpoint) { this._validator = Validator; }
-        public Server(LDap.IDataSource Validator, string localEndpoint, int Port) : this(new Sys.Net.IPEndPoint(Sys.Net.IPAddress.Parse(localEndpoint), Port)) { this._validator = Validator; }
+        public Server(LDap.IDataSource Validator, Sys.Net.IPEndPoint localEndpoint) : this(localEndpoint) { this._source = Validator; }
+        public Server(LDap.IDataSource Validator, string localEndpoint, int Port) : this(new Sys.Net.IPEndPoint(Sys.Net.IPAddress.Parse(localEndpoint), Port)) { this._source = Validator; }
         public Server(LDap.IDataSource Validator, string localEndpoint) : this(Validator, localEndpoint, LDap.Server.StandardPort) { /* NOTHING */ }
     }
 }
